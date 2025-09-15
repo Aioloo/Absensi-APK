@@ -1,8 +1,8 @@
  package com.example.absensiapk.modelview
 
-    import android.app.Application
-    import android.content.Context
-    import android.net.Uri
+ import android.app.Application
+ import android.content.Context
+ import android.net.Uri
     import android.util.Log
     import androidx.core.content.edit
     import androidx.lifecycle.AndroidViewModel
@@ -260,55 +260,50 @@
             }
         }
 
-        fun submitAbsen(karyawanId: Int,time: String, lat: Double, lon: Double, photoUri: Uri, status: String) {
+        fun submitTimeOffRequest(
+            karyawanId: Int,
+            jenisTimeOff: String,
+            tanggalMulai: String,
+            tanggalSelesai: String,
+            alasan: String
+        ) {
             viewModelScope.launch {
-                val currentKaryawanId = _karyawanId.value
-                if (currentKaryawanId == null) {
-                    Log.e("HomeViewModel", "Karyawan ID is not set.")
-                    return@launch
-                }
-
                 try {
-                    val file = uriToFile(context, photoUri)
-                    val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    val fotoPart = MultipartBody.Part.createFormData("foto_absen", file.name, requestFile)
+                    val karyawanIdPart = karyawanId.toString().toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    val jenisTimeOffPart = jenisTimeOff.toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    val tanggalMulaiPart = tanggalMulai.toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    val tanggalSelesaiPart = tanggalSelesai.toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    val alasanPart = alasan.toRequestBody("text/plain".toMediaTypeOrNull()!!)
 
-                    val response = apiService.absen(
-                        karyawan = karyawanId.toString().toRequestBody(),
-                        jamAbsen = time.toRequestBody(),
-                        statusAbsen = status.toRequestBody(),
-                        lokasiAbsenLat = lat.toString().toRequestBody(),
-                        lokasiAbsenLong = lon.toString().toRequestBody(),
-                        fotoAbsen = fotoPart
+                    val response = apiService.timeoff(
+                        karyawan = karyawanIdPart,
+                        jenis = jenisTimeOffPart,
+                        tanggalMulai = tanggalMulaiPart,
+                        tanggalSelesai = tanggalSelesaiPart,
+                        alasan = alasanPart
                     )
 
                     if (response.isSuccessful) {
-                        val attendanceRecord = response.body()
-                        val photoUrl = attendanceRecord?.fotoAbsen
-                        _todayAttendance.value = _todayAttendance.value.copy(
-                            karyawanId = karyawanId,
-                            jamAbsen = time,
-                            statusMasuk = "Absen",
-                            fotoMasuk = photoUrl,
-                            lokasiMasukLat = lat,
-                            lokasiMasukLong = lon,
-                        )
-                    }else {
-                        Log.e("HomeViewModel", "Gagal mengirim izin: ${response.code()} - ${response.errorBody()?.string()}")
+                        Log.d("API_SUCCESS", "Pengajuan cuti berhasil!")
+                    } else {
+                        Log.e("API_ERROR", "Pengajuan cuti gagal: ${response.code()} - ${response.errorBody()?.string()}")
                     }
                 } catch (e: Exception) {
-                    Log.e("HomeViewModel", "Error submitting izin: ${e.message}", e)
+                    Log.e("API_CRASH", "Kesalahan saat pengajuan cuti: ${e.message}", e)
                 }
             }
         }
 
-        companion object {
-            fun Factory(apiService: ApiService, application: Application): ViewModelProvider.Factory =
-                object : ViewModelProvider.Factory {
-                    @Suppress("UNCHECKED_CAST")
-                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return HomeViewModel(apiService, application) as T
-                    }
+
+
+
+    companion object {
+        fun Factory(apiService: ApiService, application: Application): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return HomeViewModel(apiService, application) as T
                 }
-        }
+            }
     }
+}

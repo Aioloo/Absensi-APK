@@ -1,8 +1,8 @@
 package com.example.absensiapk
 
-import AbsentScreen
 import CheckInScreen
 import CheckOutScreen
+import TimeOffScreen
 import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -99,8 +99,8 @@ fun MyApp() {
             CheckOutScreen(navController = navController, homeViewModel = homeViewModel)
         }
 
-        composable("absent"){
-            AbsentScreen(navController = navController, homeViewModel = homeViewModel)
+        composable("time_off"){
+            TimeOffScreen(navController = navController, homeViewModel = homeViewModel)
         }
     }
 }

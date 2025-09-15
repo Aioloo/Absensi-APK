@@ -6,10 +6,9 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .models import Karyawan, Absensi, Cuti
+from .models import Karyawan, Absensi, TimeOff
 from .serializers import (
-    KaryawanSerializer, AbsensiMasukSerializer, AbsensiKeluarSerializer,
-    AbsensiAbsenSerializer, AttendanceListSerializer, CutiSerializer
+    KaryawanSerializer, AbsensiMasukSerializer, AbsensiKeluarSerializer, AttendanceListSerializer, TimeOffSerializer
 )
 from datetime import date, datetime, time
 from django.http import HttpResponse
@@ -17,21 +16,20 @@ from django.http import HttpResponse
 def home_view(request):
     return HttpResponse("Welcome to the Employee Attendance System")
 
-class CutiViewSet(viewsets.ModelViewSet):
+class TimeOffViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['post'])
     def ajukan(self, request):
         karyawan = Karyawan.objects.get(user=request.user)
-        serializer = CutiSerializer(data=request.data)
+        serializer = TimeOffSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(karyawan=karyawan)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser])
     def list(self, request):
-        queryset = Cuti.objects.all().order_by('-created_at')
-        serializer = CutiSerializer(queryset, many=True)
+        queryset = TimeOff.objects.all().order_by('-created_at')
+        serializer = TimeOffSerializer(queryset, many=True)
         return Response(serializer.data)
 
 class KaryawanViewSet(viewsets.ModelViewSet):
@@ -110,23 +108,6 @@ class AbsensiViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def absen(self, request):
-        karyawan = Karyawan.objects.get(user=request.user)
-        today = date.today()
-        absensi_sudah_ada = Absensi.objects.filter(karyawan=karyawan, tanggal=today).exists()
-        
-        if absensi_sudah_ada:
-            return Response({"detail": "Anda sudah memiliki entri absensi hari ini."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        data = request.data.copy()
-        data['karyawan'] = karyawan.id
-        
-        serializer = AbsensiAbsenSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(karyawan=karyawan)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
 class LoginView(APIView):
     def post(self, request):

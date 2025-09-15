@@ -33,15 +33,14 @@ interface ApiService {
     ): Response<AttendanceData>
 
     @Multipart
-    @POST("api/absensi/absen/")
-    suspend fun absen(
-        @Part("karyawan") karyawan: RequestBody,
-        @Part("jam_absen") jamAbsen: RequestBody,
-        @Part("status_absen") statusAbsen: RequestBody,
-        @Part fotoAbsen: MultipartBody.Part,
-        @Part("lokasi_absen_lat") lokasiAbsenLat: RequestBody,
-        @Part("lokasi_absen_long") lokasiAbsenLong: RequestBody
-    ): Response<AttendanceData>
+    @POST("api/timeoff/ajukan/")
+    suspend fun timeoff(
+        @Field("karyawan") karyawan: RequestBody,
+        @Field("jenis") jenis: RequestBody,
+        @Field("tanggal_mulai") tanggalMulai: RequestBody,
+        @Field("tanggal_selesai") tanggalSelesai: RequestBody,
+        @Field("alasan") alasan: RequestBody,
+    ): Response<TimeOffData>
 
     @GET("api/absensi/history/")
     suspend fun getAttendanceHistory(@Query("karyawan_id") karyawanId: Int): Response<List<AttendanceData>>

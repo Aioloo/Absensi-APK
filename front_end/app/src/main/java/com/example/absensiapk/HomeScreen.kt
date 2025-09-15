@@ -307,7 +307,7 @@ fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawan
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.run),
-                            contentDescription = "Absent",
+                            contentDescription = "Time Off",
                             tint = Color.Black,
                             modifier = Modifier.size(16.dp)
                         )
