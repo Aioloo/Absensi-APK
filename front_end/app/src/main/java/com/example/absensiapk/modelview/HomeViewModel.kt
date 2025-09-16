@@ -24,8 +24,9 @@
     import java.io.FileOutputStream
     import java.time.LocalDate
     import java.lang.Exception
+ import java.time.format.DateTimeFormatter
 
-    class HomeViewModel(private val apiService: ApiService, application: Application) : AndroidViewModel(application) {
+ class HomeViewModel(private val apiService: ApiService, application: Application) : AndroidViewModel(application) {
         private val context: Context = application.applicationContext
 
         private val _todayAttendance = MutableStateFlow(AttendanceData())
@@ -269,18 +270,21 @@
         ) {
             viewModelScope.launch {
                 try {
+                    val formattedTanggalMulai = tanggalMulai.format(DateTimeFormatter.ofPattern("YYYY-MM-DD"))
+                    val formattedTanggalSelesai = tanggalSelesai.format(DateTimeFormatter.ofPattern("YYYY-MM-DD"))
+
                     val karyawanIdPart = karyawanId.toString().toRequestBody("text/plain".toMediaTypeOrNull()!!)
                     val jenisTimeOffPart = jenisTimeOff.toRequestBody("text/plain".toMediaTypeOrNull()!!)
-                    val tanggalMulaiPart = tanggalMulai.toRequestBody("text/plain".toMediaTypeOrNull()!!)
-                    val tanggalSelesaiPart = tanggalSelesai.toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    val tanggalMulaiPart = formattedTanggalMulai.toRequestBody()
+                    val tanggalSelesaiPart = formattedTanggalSelesai.toRequestBody()
                     val alasanPart = alasan.toRequestBody("text/plain".toMediaTypeOrNull()!!)
 
                     val response = apiService.timeoff(
-                        karyawan = karyawanIdPart,
-                        jenis = jenisTimeOffPart,
-                        tanggalMulai = tanggalMulaiPart,
-                        tanggalSelesai = tanggalSelesaiPart,
-                        alasan = alasanPart
+                        karyawan = karyawanId,
+                        jenis = jenisTimeOff,
+                        tanggalMulai = tanggalMulai,
+                        tanggalSelesai = tanggalSelesai,
+                        alasan = alasan
                     )
 
                     if (response.isSuccessful) {

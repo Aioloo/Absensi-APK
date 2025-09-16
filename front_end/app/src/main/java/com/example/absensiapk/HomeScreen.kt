@@ -300,7 +300,7 @@ fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawan
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = {navController.navigate("absent")},
+                    onClick = {navController.navigate("time_off")},
                     colors = ButtonDefaults.buttonColors(containerColor = Orange),
                     modifier = Modifier.size(width = 130.dp, height = 50.dp)
                 ) {
@@ -313,7 +313,7 @@ fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawan
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Absent",
+                            text = "Time Off",
                             fontFamily = Poppins,
                             color = Color.Black)
                     }

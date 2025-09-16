@@ -32,14 +32,14 @@ interface ApiService {
         @Part("lokasi_keluar_long") lokasiKeluarLong: RequestBody
     ): Response<AttendanceData>
 
-    @Multipart
+    @FormUrlEncoded
     @POST("api/timeoff/ajukan/")
     suspend fun timeoff(
-        @Field("karyawan") karyawan: RequestBody,
-        @Field("jenis") jenis: RequestBody,
-        @Field("tanggal_mulai") tanggalMulai: RequestBody,
-        @Field("tanggal_selesai") tanggalSelesai: RequestBody,
-        @Field("alasan") alasan: RequestBody,
+        @Field("karyawan") karyawan: Int,
+        @Field("jenis") jenis: String,
+        @Field("tanggal_mulai") tanggalMulai: String,
+        @Field("tanggal_selesai") tanggalSelesai: String,
+        @Field("alasan") alasan: String,
     ): Response<TimeOffData>
 
     @GET("api/absensi/history/")

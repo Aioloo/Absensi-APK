@@ -22,14 +22,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.absensiapk.R
 import com.example.absensiapk.modelview.HomeViewModel
-import com.example.absensiapk.ui.theme.AbsensiAPKTheme
 import com.example.absensiapk.ui.theme.BluePAL
 import com.example.absensiapk.ui.theme.Poppins
 import java.util.Calendar
@@ -109,7 +106,14 @@ fun TimeOffScreen(navController: NavController, homeViewModel: HomeViewModel = v
                     }
 
                     isSubmitting = true
-                    homeViewModel.submitTimeOffRequest()
+                    homeViewModel.submitTimeOffRequest(
+                        karyawanId = karyawanId,
+                        jenisTimeOff = selectedJenisTimeOff,
+                        tanggalMulai = tanggalMulai!!.toString(),
+                        tanggalSelesai = tanggalSelesai!!.toString(),
+                        alasan = alasan
+                    )
+                    navController.navigate("home")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isSubmitting
@@ -199,18 +203,6 @@ fun DatePickerField(
                     }
                 )
             }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun TimeOffScreenPreview(){
-    // Memberikan data dummy untuk preview
-    AbsensiAPKTheme {
-        TimeOffScreen(
-            navController = rememberNavController(),
-            homeViewModel = viewModel()
         )
     }
 }

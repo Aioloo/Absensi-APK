@@ -21,7 +21,7 @@ class AttendanceListSerializer(serializers.ModelSerializer):
         fields = [
             'tanggal',
             'jam_masuk', 'jam_keluar',
-            'foto_masuk', 'foto_keluar' 
+            'foto_masuk', 'foto_keluar', 
             'lokasi_masuk_lat', 'lokasi_masuk_long', 'lokasi_keluar_lat', 'lokasi_keluar_long',
             'status_masuk', 'status_keluar']
 
