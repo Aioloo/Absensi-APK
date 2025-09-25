@@ -46,7 +46,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.getValue
 import coil.compose.rememberImagePainter
 import com.example.absensiapk.models.AttendanceData
-import com.example.absensiapk.ui.theme.Orange
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -107,7 +106,6 @@ fun AttendanceListTopBar(navController: NavController){
             modifier = Modifier
                 .weight(1f)
         )
-        // Spacer kosong untuk menyeimbangkan layout
         Spacer(modifier = Modifier.size(24.dp))
     }
 }
@@ -147,7 +145,6 @@ fun AttendanceListCard(record: AttendanceData) {
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.Top
             ) {
-                // Item Check In
                 if (record.jamMasuk != null) {
                     AttendanceStatusItem(
                         title = "Check In",
@@ -155,12 +152,14 @@ fun AttendanceListCard(record: AttendanceData) {
                         status = record.statusMasuk,
                         locationLat = record.lokasiMasukLat,
                         locationLong = record.lokasiMasukLong,
-                        photoUrl = record.fotoMasuk?.let { "${RetrofitClient.BASE_URL}$it"} // Perbaiki di sini
+                        photoUrl = record.fotoMasuk?.let { "${RetrofitClient.BASE_URL}$it"}
                     )
+                }
+
+                if(record.jamMasuk!=null && record.jamKeluar != null) {
                     VerticalDivider()
                 }
 
-                // Item Check Out
                 if (record.jamKeluar != null) {
                     AttendanceStatusItem(
                         title = "Check Out",
@@ -168,28 +167,14 @@ fun AttendanceListCard(record: AttendanceData) {
                         status = record.statusKeluar,
                         locationLat = record.lokasiKeluarLat,
                         locationLong = record.lokasiKeluarLong,
-                        photoUrl = record.fotoKeluar?.let { "${RetrofitClient.BASE_URL}$it"} // Perbaiki di sini
-                    )
-                }
-
-                // Item Absen
-                if (record.jamAbsen != null) {
-                    if (record.jamKeluar != null) { // Tambahkan divider jika Check Out ada
-                        VerticalDivider()
-                    }
-                    AttendanceStatusItem(
-                        title = "Absen",
-                        time = record.jamAbsen,
-                        status = record.statusAbsen,
-                        locationLat = record.lokasiAbsenLat,
-                        locationLong = record.lokasiAbsenLong,
-                        photoUrl = record.fotoAbsen?.let { "${RetrofitClient.BASE_URL}$it"} // Perbaiki di sini
+                        photoUrl = record.fotoKeluar?.let { "${RetrofitClient.BASE_URL}$it"}
                     )
                 }
             }
         }
     }
 }
+
 
 
 @Composable
@@ -203,7 +188,6 @@ fun AttendanceStatusItem(
 ) {
     val timeColor = when (status) {
         "On Time"-> Color.Green
-        "Absen" -> Orange
         "Telat" -> Color.Red
         else -> Color.Gray
     }
@@ -211,7 +195,6 @@ fun AttendanceStatusItem(
     val displayStatus = when (status) {
         "On Time" -> "On Time"
         "Telat" -> "Telat"
-        "Absen" -> "Absen"
         else -> "-"
     }
 

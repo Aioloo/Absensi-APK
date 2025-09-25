@@ -10,7 +10,7 @@ from .models import Karyawan, Absensi, TimeOff
 from .serializers import (
     KaryawanSerializer, AbsensiMasukSerializer, AbsensiKeluarSerializer, AttendanceListSerializer, TimeOffSerializer
 )
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from django.http import HttpResponse
 
 def home_view(request):
@@ -22,6 +22,12 @@ class TimeOffViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def ajukan(self, request):
         karyawan = Karyawan.objects.get(user=request.user)
+
+        if request.data.get('jenis') == 'Cuti':
+             sisa_cuti = karyawan.get_sisa_cuti()
+             if sisa_cuti <= 0:
+                 return Response({'error': 'Anda tidak memiliki sisa cuti untuk bulan ini.'}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = TimeOffSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(karyawan=karyawan)
@@ -32,6 +38,30 @@ class TimeOffViewSet(viewsets.ViewSet):
         serializer = TimeOffSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        karyawan = Karyawan.objects.get(user=request.user)
+        queryset = TimeOff.objects.filter(karyawan=karyawan).order_by('-created_at')
+        serializer = TimeOffSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        try:
+            timeoff_request = TimeOff.objects.get(pk=pk)
+        except TimeOff.DoesNotExist:
+            return Response({"detail": "Pengajuan tidak ditemukan."}, status=status.HTTP_404_NOT_FOUND)
+
+        if timeoff_request.status == 'APPROVED':
+            return Response({"detail": "Pengajuan ini sudah disetujui."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ubah status menjadi 'APPROVED' dan simpan
+        timeoff_request.status = 'APPROVED'
+        timeoff_request.save()
+
+        serializer = TimeOffSerializer(timeoff_request)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 class KaryawanViewSet(viewsets.ModelViewSet):
     queryset = Karyawan.objects.all()
     serializer_class = KaryawanSerializer
@@ -71,7 +101,7 @@ class AbsensiViewSet(viewsets.ViewSet):
         if absensi_sudah_ada:
             return Response({"detail": "Anda sudah absen masuk hari ini."}, status=status.HTTP_400_BAD_REQUEST)
         
-        data = request.data.copy()
+        data = request.data
         data['karyawan'] = karyawan.id
         
         jam_masuk_str = data.get('jam_masuk')

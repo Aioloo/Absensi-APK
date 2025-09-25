@@ -1,17 +1,28 @@
 from rest_framework import serializers
 from .models import Karyawan, Absensi, TimeOff
+from django.utils import timezone
 
 class KaryawanSerializer(serializers.ModelSerializer):
+    sisa_cuti = serializers.SerializerMethodField()
     class Meta:
         model = Karyawan
-        fields = ['id', 'nama', 'email', 'divisi','foto_profil']
+        fields = ['id', 'nama', 'email', 'divisi','foto_profil', 'jatah_cuti_per_bulan', 'sisa_cuti']
 
     def get_foto_profil(self, obj):
         if obj.foto_profil:
             request = self.context.get('request')
             return request.build_absolute_uri(obj.foto_profil.url)
-        return None
+        
+    def get_sisa_cuti(self, obj):
+        cuti_terpakai = TimeOff.objects.filter(
+            karyawan=obj,
+            jenis='Cuti',
+            status__in=['Approved']
+        ).count()
 
+        jatah_cuti = obj.jatah_cuti_per_bulan
+
+        return jatah_cuti - cuti_terpakai
 class AttendanceListSerializer(serializers.ModelSerializer):
     jam_masuk = serializers.SerializerMethodField()
     jam_keluar = serializers.SerializerMethodField()

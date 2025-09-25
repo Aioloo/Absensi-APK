@@ -1,8 +1,6 @@
 package com.example.absensiapk
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,73 +13,65 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.absensiapk.ui.theme.AbsensiAPKTheme
+import com.example.absensiapk.models.TimeOffData
+import com.example.absensiapk.modelview.HomeViewModel
 import com.example.absensiapk.ui.theme.Abu
 import com.example.absensiapk.ui.theme.BluePAL
+import com.example.absensiapk.ui.theme.Orange
 import com.example.absensiapk.ui.theme.Poppins
-
-data class NotificationItem(
-    val time : String,
-    val message : String
-)
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Composable
-fun NotificationScreen(navController: NavController) {
-    val scrollState = rememberScrollState()
+fun TimeOffList(navController: NavController, homeViewModel: HomeViewModel = viewModel()){
+    val timeOffList by homeViewModel.timeOffList.collectAsState()
+
+    LaunchedEffect(Unit) {
+        homeViewModel.loadTimeOffList()
+    }
 
     Scaffold(
-        topBar = { NotificationTopBar(navController) },
-        bottomBar = { NotificationBottomBar() }
+        topBar = { TimeOffTopBar(navController = navController) },
+        bottomBar = { CopyrightBottomBar() }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .background(color = Abu)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState)
+                .padding(16.dp)
         ) {
-            // Data statis untuk contoh
-            val notifications = listOf(
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)"),
-                NotificationItem("06.30", "Jangan Lupa Absen Masuk Ya!! (06.30 - 12.00)")
-            )
-
-            notifications.forEach { notification ->
-                NotificationCard(notification = notification)
+            items(timeOffList) { timeOff ->
+                TimeOffCard(timeOff = timeOff)
             }
         }
     }
 }
 
 @Composable
-fun NotificationTopBar(navController: NavController){
+fun TimeOffTopBar(navController: NavController){
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,7 +90,7 @@ fun NotificationTopBar(navController: NavController){
                 .clickable{navController.popBackStack()}
         )
         Text(
-            text = "Notification",
+            text = "Time Off List",
             fontFamily = Poppins,
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
@@ -113,41 +103,91 @@ fun NotificationTopBar(navController: NavController){
 }
 
 @Composable
-fun NotificationCard(notification: NotificationItem) {
+fun TimeOffCard(timeOff: TimeOffData) {
+    val formattedDate = timeOff.tanggalMulai?.let{
+      try {
+          val date = LocalDate.parse(it)
+          date.format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"))
+      } catch (e: Exception) {
+          it
+      }
+  } ?: "-"
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 16.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = notification.time,
-                fontFamily = Poppins,
-                fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.width(60.dp)
-            )
-            Text(
-                text = notification.message,
+                text = formattedDate,
                 fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 color = Color.Black
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Jenis Time Off",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+
+                    Text(
+                        text = timeOff.jenis ?: "-",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Status",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = timeOff.status ?: "-",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = when (timeOff.status) {
+                            "Approved" -> Color.Green
+                            "Rejected" -> Color.Red
+                            else -> Orange
+                        }
+                    )
+                }
+            }
         }
     }
 }
 
+
 @Composable
-fun NotificationBottomBar() {
+fun CopyrightBottomBar() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,4 +203,3 @@ fun NotificationBottomBar() {
         )
     }
 }
-

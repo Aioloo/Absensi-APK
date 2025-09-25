@@ -13,7 +13,8 @@
     import com.example.absensiapk.models.AbsenceCountData
     import com.example.absensiapk.models.AttendanceData
     import com.example.absensiapk.models.KaryawanData
-    import kotlinx.coroutines.flow.MutableStateFlow
+ import com.example.absensiapk.models.TimeOffData
+ import kotlinx.coroutines.flow.MutableStateFlow
     import kotlinx.coroutines.flow.StateFlow
     import kotlinx.coroutines.launch
     import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -24,36 +25,63 @@
     import java.io.FileOutputStream
     import java.time.LocalDate
     import java.lang.Exception
- import java.time.format.DateTimeFormatter
 
  class HomeViewModel(private val apiService: ApiService, application: Application) : AndroidViewModel(application) {
-        private val context: Context = application.applicationContext
+     private val context: Context = application.applicationContext
 
-        private val _todayAttendance = MutableStateFlow(AttendanceData())
-        val todayAttendance: StateFlow<AttendanceData> = _todayAttendance
+     private val _todayAttendance = MutableStateFlow(AttendanceData())
+     val todayAttendance: StateFlow<AttendanceData> = _todayAttendance
 
-        private val _attendanceList = MutableStateFlow<List<AttendanceData>>(emptyList())
-        val attendanceList: StateFlow<List<AttendanceData>> = _attendanceList
+     private val _attendanceList = MutableStateFlow<List<AttendanceData>>(emptyList())
+     val attendanceList: StateFlow<List<AttendanceData>> = _attendanceList
 
-        private val _employeeList = MutableStateFlow<List<KaryawanData>>(emptyList())
-        val employeeList: StateFlow<List<KaryawanData>> = _employeeList
+     private val _employeeList = MutableStateFlow<List<KaryawanData>>(emptyList())
+     val employeeList: StateFlow<List<KaryawanData>> = _employeeList
 
-        private val _karyawanName = MutableStateFlow("")
-        val karyawanName: StateFlow<String> = _karyawanName
+     private val _karyawanName = MutableStateFlow("")
+     val karyawanName: StateFlow<String> = _karyawanName
 
-        private val _karyawanFoto = MutableStateFlow <String?>(null)
-        val karyawanFoto: StateFlow<String?> = _karyawanFoto
+     private val _karyawanFoto = MutableStateFlow <String?>(null)
+     val karyawanFoto: StateFlow<String?> = _karyawanFoto
 
-        private val _absenceCount = MutableStateFlow<AbsenceCountData?>(null)
-        val absenceCount: StateFlow<AbsenceCountData?> = _absenceCount
+     private val _absenceCount = MutableStateFlow<AbsenceCountData?>(null)
+     val absenceCount: StateFlow<AbsenceCountData?> = _absenceCount
 
-        private val _karyawanId = MutableStateFlow<Int?>(null)
+     private val _timeOffList = MutableStateFlow<List<TimeOffData>>(emptyList())
+     val timeOffList: StateFlow<List<TimeOffData>> = _timeOffList
 
-        fun setKaryawanId(id: Int) {
-            _karyawanId.value = id
-            loadTodayAttendanceFromBackend()
-            loadKaryawanData()
-        }
+     private val _jatahCuti = MutableStateFlow<Int?>(null)
+     val jatahCuti: StateFlow<Int?> = _jatahCuti
+
+     private val _sisaCuti = MutableStateFlow<Int?>(null)
+     val sisaCuti: StateFlow<Int?> = _sisaCuti
+
+
+     private val _karyawanId = MutableStateFlow<Int?>(null)
+
+     fun setKaryawanId(id: Int) {
+         _karyawanId.value = id
+         loadTodayAttendanceFromBackend()
+         loadKaryawanData()
+     }
+
+     fun loadTimeOffList() {
+         viewModelScope.launch {
+             val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+             val karyawanId = prefs.getInt("karyawan_id", 0)
+
+             if (karyawanId != 0) {
+                 try {
+                     val response = apiService.getTimeOffHistory(karyawanId)
+                     if (response.isSuccessful && response.body() != null) {
+                         _timeOffList.value = response.body()!!
+                     }
+                 } catch (e: Exception) {
+                     //blablabla
+                 }
+             }
+         }
+     }
 
         fun loadAbsenceCount(){
             viewModelScope.launch {
@@ -70,7 +98,7 @@
         }
 
 
-        private fun loadKaryawanData() {
+        fun loadKaryawanData() {
             viewModelScope.launch {
                 val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
                 val karyawanId = prefs.getInt("karyawan_id", 0)
@@ -80,6 +108,8 @@
                         if (response.isSuccessful && response.body() != null) {
                             _karyawanName.value = response.body()!!.nama
                             _karyawanFoto.value = response.body()!!.fotoProfil
+                            _jatahCuti.value = response.body()!!.jatahCutiPerBulan
+                            _sisaCuti.value = response.body()!!.sisaCutiPerBulan
                         }
                     } catch (e: Exception) {
                         Log.e("HomeViewModel", "Error loading karyawan data: ${e.message}")
@@ -262,7 +292,6 @@
         }
 
         fun submitTimeOffRequest(
-            karyawanId: Int,
             jenisTimeOff: String,
             tanggalMulai: String,
             tanggalSelesai: String,
@@ -270,17 +299,17 @@
         ) {
             viewModelScope.launch {
                 try {
-                    val formattedTanggalMulai = tanggalMulai.format(DateTimeFormatter.ofPattern("YYYY-MM-DD"))
-                    val formattedTanggalSelesai = tanggalSelesai.format(DateTimeFormatter.ofPattern("YYYY-MM-DD"))
+                    Log.d("TIMEOFF_REQUEST", "Mengirim: Jenis=$jenisTimeOff, Tanggal=$tanggalMulai")
+                    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                    val karyawanId = prefs.getInt("karyawan_id", 0)
 
-                    val karyawanIdPart = karyawanId.toString().toRequestBody("text/plain".toMediaTypeOrNull()!!)
-                    val jenisTimeOffPart = jenisTimeOff.toRequestBody("text/plain".toMediaTypeOrNull()!!)
-                    val tanggalMulaiPart = formattedTanggalMulai.toRequestBody()
-                    val tanggalSelesaiPart = formattedTanggalSelesai.toRequestBody()
-                    val alasanPart = alasan.toRequestBody("text/plain".toMediaTypeOrNull()!!)
+                    if (karyawanId == 0) {
+                        Log.e("HomeViewModel", "Karyawan ID is not set.")
+                        return@launch
+                    }
 
                     val response = apiService.timeoff(
-                        karyawan = karyawanId,
+                        karyawanId = karyawanId,
                         jenis = jenisTimeOff,
                         tanggalMulai = tanggalMulai,
                         tanggalSelesai = tanggalSelesai,

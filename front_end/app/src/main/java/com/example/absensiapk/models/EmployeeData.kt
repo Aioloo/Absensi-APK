@@ -9,5 +9,7 @@ data class KaryawanData(
     val divisi: String?,
     val email: String?,
     @SerializedName("foto_profil")
-    val fotoProfil: String?
+    val fotoProfil: String?,
+    @SerializedName("jatah_cuti_per_bulan") val jatahCutiPerBulan: Int?,
+    @SerializedName("sisa_cuti") val sisaCutiPerBulan: Int?
 )

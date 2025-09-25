@@ -87,8 +87,8 @@ fun MyApp() {
             EmployeeListScreen(navController = navController, homeViewModel = homeViewModel)
         }
 
-        composable("notification"){
-            NotificationScreen(navController = navController)
+        composable("time_off_list"){
+            TimeOffList(navController = navController, homeViewModel = homeViewModel)
         }
 
         composable("check_in"){

@@ -35,12 +35,15 @@ interface ApiService {
     @FormUrlEncoded
     @POST("api/timeoff/ajukan/")
     suspend fun timeoff(
-        @Field("karyawan") karyawan: Int,
+        @Field("karyawan_id") karyawanId: Int,
         @Field("jenis") jenis: String,
         @Field("tanggal_mulai") tanggalMulai: String,
         @Field("tanggal_selesai") tanggalSelesai: String,
         @Field("alasan") alasan: String,
     ): Response<TimeOffData>
+
+    @GET("api/timeoff/history/")
+    suspend fun getTimeOffHistory(@Query("karyawan_id") karyawanId: Int): Response<List<TimeOffData>>
 
     @GET("api/absensi/history/")
     suspend fun getAttendanceHistory(@Query("karyawan_id") karyawanId: Int): Response<List<AttendanceData>>

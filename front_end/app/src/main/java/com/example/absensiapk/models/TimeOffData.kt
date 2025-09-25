@@ -5,18 +5,11 @@ import com.google.gson.annotations.SerializedName
 data class TimeOffData(
     @SerializedName("id")
     val id: Int? = null,
-    @SerializedName("karyawan")
-    val karyawanId: Int? = null,
-    @SerializedName("jenis")
+    @SerializedName("karyawan") val karyawanId: Int? = null,
     val jenis: String? = null,
-    @SerializedName("tanggal_mulai")
-    val tanggalMulai: String? = null,
-    @SerializedName("tanggal_selesai")
-    val tanggalSelesai: String? = null,
-    @SerializedName("alasan")
+    @SerializedName("tanggal_mulai") val tanggalMulai: String? = null,
+    @SerializedName("tanggal_selesai") val tanggalSelesai: String? = null,
     val alasan: String? = null,
-    @SerializedName("status")
     val status: String? = null,
-    @SerializedName("created_at")
-    val createdAt: String? = null
+    @SerializedName("created_at") val createdAt: String? = null
 )

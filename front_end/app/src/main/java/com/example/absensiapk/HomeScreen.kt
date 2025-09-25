@@ -27,7 +27,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -425,17 +424,6 @@ fun TodayAttendanceSection(homeViewModel: HomeViewModel = viewModel()) {
                     isAttended = todayAttendance.jamKeluar != null,
                     status = todayAttendance.statusKeluar
                 )
-
-                VerticalDivider()
-
-                StatusItem(
-                    statusText = "Absen",
-                    photoUri = todayAttendance.fotoAbsen?.let { Uri.parse("${RetrofitClient.BASE_URL}$it") },
-                    attendanceTime = todayAttendance.jamAbsen ?: "-",
-                    coordinate = if (todayAttendance.lokasiAbsenLat != null) "${todayAttendance.lokasiAbsenLat}, ${todayAttendance.lokasiAbsenLong}" else "-",
-                    isAttended = todayAttendance.jamAbsen != null,
-                    status = todayAttendance.statusAbsen
-                )
             }
         }
     }
@@ -454,7 +442,7 @@ fun StatusItem(
 ) {
 
     val timeColor = when (status) {
-        "On Time", "Absen" -> Color.Green
+        "On Time" -> Color.Green
         "Telat" -> Color.Red
         else -> Color.Gray
     }
@@ -462,7 +450,6 @@ fun StatusItem(
     val displayStatus = when (status) {
         "On Time" -> "On Time"
         "Telat" -> "Telat"
-        "Absen" -> "Absen"
         else -> "-"
     }
 
@@ -559,10 +546,10 @@ fun TombolBawah(navController: NavController) {
                 onClick = { navController.navigate("employee_list") }
             )
             BottomNavItem(
-                icon = R.drawable.notifications,
-                label = "Notification",
-                iconColor = Color.Red,
-                onClick = { navController.navigate("notification") }
+                icon = R.drawable.timeofflist,
+                label = "Time Off List",
+                iconColor = Orange,
+                onClick = { navController.navigate("time_off_list") }
             )
         }
 
