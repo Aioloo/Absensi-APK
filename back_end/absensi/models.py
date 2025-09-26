@@ -43,11 +43,11 @@ class TimeOff(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
-        
 
 class Karyawan(models.Model):
         user = models.OneToOneField(User, on_delete=models.CASCADE)
         nama = models.CharField(max_length=255)
+        perusahaan = models.CharField(max_length=255, default='PT PAL Indonesia (PERSERO)')
         divisi = models.CharField(max_length=255, null=True, blank=True)
         email = models.EmailField(unique=True)
         foto_profil = models.ImageField(upload_to='karyawan_photos/', null=True, blank=True)

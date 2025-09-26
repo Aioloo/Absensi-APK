@@ -128,8 +128,9 @@ fun EmployeeCard(employee: KaryawanData){
 
                 DetailRow("Divisi", employee.divisi?:"-")
                 Spacer(modifier = Modifier.height(4.dp))
-                Spacer(modifier = Modifier.height(4.dp))
                 DetailRow("Email", employee.email?:"-")
+                Spacer(modifier = Modifier.height(4.dp))
+                DetailRow("Perusahaan", employee.perusahaan?:"-")
             }
 
             if(!employee.fotoProfil.isNullOrEmpty()){

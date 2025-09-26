@@ -1,13 +1,19 @@
 from django.contrib import admin
+from django.contrib.auth.models import Group
 from .models import Karyawan, Absensi, TimeOff # <-- Pastikan semua model diimpor
+
+# Unregister Groups model karena tidak digunakan
+admin.site.unregister(Group)
 
 # Kustomisasi model Karyawan
 @admin.register(Karyawan)
 class KaryawanAdmin(admin.ModelAdmin):
     # Field yang akan ditampilkan di halaman daftar
-    list_display = ('nama', 'divisi', 'email')
+    list_display = ('nama', 'perusahaan', 'divisi', 'email')
     # Field yang bisa dicari
-    search_fields = ('nama', 'divisi', 'email')
+    search_fields = ('nama', 'perusahaan', 'divisi', 'email')
+    # Filter berdasarkan perusahaan
+    list_filter = ('perusahaan', 'divisi')
 
 # Kustomisasi model Absensi
 @admin.register(Absensi)

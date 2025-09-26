@@ -63,9 +63,13 @@ class TimeOffViewSet(viewsets.ViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class KaryawanViewSet(viewsets.ModelViewSet):
-    queryset = Karyawan.objects.all()
     serializer_class = KaryawanSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Filter karyawan berdasarkan perusahaan yang sama dengan user yang login
+        user_karyawan = Karyawan.objects.get(user=self.request.user)
+        return Karyawan.objects.filter(perusahaan=user_karyawan.perusahaan)
 
 class AbsensiViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

@@ -6,7 +6,7 @@ class KaryawanSerializer(serializers.ModelSerializer):
     sisa_cuti = serializers.SerializerMethodField()
     class Meta:
         model = Karyawan
-        fields = ['id', 'nama', 'email', 'divisi','foto_profil', 'jatah_cuti_per_bulan', 'sisa_cuti']
+        fields = ['id', 'nama','perusahaan', 'email', 'divisi','foto_profil', 'jatah_cuti_per_bulan', 'sisa_cuti']
 
     def get_foto_profil(self, obj):
         if obj.foto_profil:
