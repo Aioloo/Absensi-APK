@@ -76,7 +76,7 @@ fun MyApp() {
         }
 
         composable("home") {
-            HomeScreen(navController = navController, homeViewModel = homeViewModel)
+            HomeScreen(navController = navController, homeViewModel = homeViewModel,loginViewModel = loginViewModel)
         }
 
         composable ("attendance_list"){

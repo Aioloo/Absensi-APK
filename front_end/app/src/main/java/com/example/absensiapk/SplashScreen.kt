@@ -29,22 +29,6 @@ import com.example.absensiapk.ui.theme.AbsensiAPKTheme
 import com.example.absensiapk.ui.theme.Poppins
 import kotlinx.coroutines.delay
 
-class SplashScreenActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            AbsensiAPKTheme {
-                SplashScreen {
-                    // This lambda is called when the delay is finished.
-                    // It transitions to the MainActivity.
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
     Box(
@@ -87,13 +71,5 @@ fun SplashScreen(onTimeout: () -> Unit) {
     LaunchedEffect(key1 = true) {
         delay(3000L) // Delay for 3 seconds
         onTimeout()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SplashScreenPreview() {
-    AbsensiAPKTheme {
-        SplashScreen {}
     }
 }

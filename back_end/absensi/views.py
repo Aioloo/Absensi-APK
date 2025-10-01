@@ -79,9 +79,11 @@ class AbsensiViewSet(viewsets.ViewSet):
         karyawan = Karyawan.objects.get(user = request.user)
         
         total_kehadiran = Absensi.objects.filter(karyawan = karyawan).count()
+        total_timeoff = TimeOff.objects.filter(karyawan = karyawan, status='Approved').count()
 
         data = {
-            'total_kehadiran' : total_kehadiran
+            'total_kehadiran' : total_kehadiran,
+            'total_timeoff' : total_timeoff
         }
 
         return Response(data)

@@ -1,6 +1,7 @@
 package com.example.absensiapk
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,18 +26,28 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +68,8 @@ import coil.compose.rememberImagePainter
 import com.example.absensiapk.api.RetrofitClient
 import com.example.absensiapk.models.AbsenceCountData
 import com.example.absensiapk.modelview.HomeViewModel
+import com.example.absensiapk.modelview.LoginViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -87,41 +101,107 @@ private fun getAttendanceState(currentTime: LocalTime): AttendanceState {
 }
 
 @Composable
-fun HomeScreen(navController: NavController, homeViewModel: HomeViewModel = viewModel()){
+fun HomeScreen(
+    navController: NavController,
+    homeViewModel: HomeViewModel = viewModel(),
+    loginViewModel: LoginViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
     val currentTime by tickerFlow.collectAsState(initial = LocalTime.now())
     val karyawanName by homeViewModel.karyawanName.collectAsState()
     val karyawanFoto by homeViewModel.karyawanFoto.collectAsState()
+    val absenceCounts by homeViewModel.absenceCount.collectAsState()
+
 
     LaunchedEffect(Unit) {
         homeViewModel.loadAbsenceCount()
     }
 
-    val absenceCounts by homeViewModel.absenceCount.collectAsState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = { TopAppBar(karyawanFoto = karyawanFoto) },
-        bottomBar = { LogoBawah() }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .background(color = Abu)
-                .verticalScroll(scrollState)
-        ) {
-            HeaderSection(navController, currentTime = currentTime, karyawanName = karyawanName)
-            Spacer(modifier = Modifier.height(16.dp))
-            AbsenceCountSection(absenceCounts)
-            Spacer(modifier = Modifier.height(16.dp))
-            TodayAttendanceSection(homeViewModel)
-            TombolBawah(navController = navController)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.width(LocalConfiguration.current.screenWidthDp.dp * 0.75f),
+                drawerContainerColor = BluePAL
+            ) {
+                Column (
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ){
+                    Column{
+                        Text("Menu",
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 16.sp,
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White)
+                        Divider()
+                    }
+                    TextButton(
+                        onClick = {
+                           loginViewModel.logout()
+                            navController.navigate("login") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                            homeViewModel.resetData()
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ){
+                            Text("Logout",
+                                fontFamily = Poppins,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Icon(
+                                painter = painterResource(id = R.drawable.logout),
+                                contentDescription = "Logout",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    karyawanFoto = karyawanFoto,
+                    onMenuClick = { scope.launch {drawerState.open()}}
+                )
+                     },
+            bottomBar = { LogoBawah() }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .background(color = Abu)
+                    .verticalScroll(scrollState)
+            ) {
+                HeaderSection(navController, currentTime = currentTime, karyawanName = karyawanName)
+                Spacer(modifier = Modifier.height(16.dp))
+                AbsenceCountSection(absenceCounts)
+                Spacer(modifier = Modifier.height(16.dp))
+                TodayAttendanceSection(homeViewModel)
+                TombolBawah(navController = navController)
+            }
         }
     }
 }
 
 @Composable
-fun TopAppBar(karyawanFoto: String?) {
+fun TopAppBar(karyawanFoto: String?, onMenuClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,15 +211,17 @@ fun TopAppBar(karyawanFoto: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            painter = painterResource(id = R.drawable.menu),
-            contentDescription = "Menu",
-            tint = Color.White,
-            modifier = Modifier.size(30.dp)
-        )
+        IconButton(onClick =onMenuClick ) {
+            Icon(
+                painter = painterResource(id = R.drawable.menu),
+                contentDescription = "Menu",
+                tint = Color.White,
+                modifier = Modifier.size(30.dp)
+            )
+        }
         Image(
             painter = if (karyawanFoto.isNullOrEmpty()){
-                painterResource(id = R.drawable.profile_icon)
+                painterResource(id = R.drawable.propil)
             } else {
                 rememberImagePainter(karyawanFoto)
             },
@@ -342,31 +424,58 @@ fun AbsenceCountSection(counts: AbsenceCountData?) {
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                Modifier
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
 
-                Text(
-                    text = "Total Kehadiran",
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black,
-                    textAlign = TextAlign.Center,
-                )
-
-                Text(
-                    text = "${it.totalKehadiran}",
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp,
-                    color = Color.Black,
-                    textAlign = TextAlign.Center
+                    Text(
+                        text = "Total Kehadiran",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center,
                     )
+
+                    Text(
+                        text = "${it.totalKehadiran}",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    Text(
+                        text = "Total Timeoff",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+
+                    Text(
+                        text = "${it.totalTimeoff}",
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
             }
+
         }
     }
 }

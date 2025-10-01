@@ -1,6 +1,7 @@
 package com.example.absensiapk.modelview
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,9 @@ class LoginViewModel(private val apiService: ApiService, private val context: Co
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState
+
+    private val _logoutState = MutableStateFlow(false)
+    val logoutState: StateFlow<Boolean> = _logoutState
 
     fun login(username: String, password: String) {
         viewModelScope.launch {
@@ -48,6 +52,22 @@ class LoginViewModel(private val apiService: ApiService, private val context: Co
                 _loginState.value = LoginState.Error("Kesalahan tak terduga: ${e.message}")
             }
         }
+    }
+
+    fun logout(){
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            remove("jwt_token")
+            remove("karyawan_id")
+            apply()
+    }
+        _logoutState.value = true
+        Log.d("LOGOUT_DEBUG", "Token dihapus. Status logout: ${_logoutState.value}")
+        _loginState.value = LoginState.Idle
+    }
+
+    fun resetLoginState() {
+        _loginState.value = LoginState.Idle
     }
 
     companion object {

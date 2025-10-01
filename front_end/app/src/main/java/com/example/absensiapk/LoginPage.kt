@@ -1,5 +1,6 @@
 package com.example.absensiapk
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -38,6 +40,11 @@ fun LoginPageContent(onLoginSuccess: (Int) -> Unit, loginViewModel: LoginViewMod
     var passwordVisibility by remember { mutableStateOf(false) }
 
     val loginState by loginViewModel.loginState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        loginViewModel.resetLoginState()
+    }
+
 
     LaunchedEffect(key1 = loginState) {
         if (loginState is LoginState.Success) {

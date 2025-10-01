@@ -61,9 +61,40 @@
 
      fun setKaryawanId(id: Int) {
          _karyawanId.value = id
+
+         val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+         prefs.edit {
+             putInt("karyawan_id", id)
+             apply()
+         }
+
          loadTodayAttendanceFromBackend()
          loadKaryawanData()
      }
+
+     fun resetData() {
+         _todayAttendance.value = AttendanceData()
+         _attendanceList.value = emptyList()
+         _employeeList.value = emptyList()
+         _karyawanName.value = ""
+         _karyawanFoto.value = null
+         _absenceCount.value = null
+         _timeOffList.value = emptyList()
+         _jatahCuti.value = null
+         _sisaCuti.value = null
+         _karyawanId.value = null
+
+         // Hapus juga data di SharedPreferences
+         context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE).edit {
+             clear()
+             apply()
+         }
+         context.getSharedPreferences("absensi_prefs", Context.MODE_PRIVATE).edit {
+             clear()
+             apply()
+         }
+     }
+
 
      fun loadTimeOffList() {
          viewModelScope.launch {
@@ -240,7 +271,7 @@
                             putInt("attendance_id", attendanceRecord?.id ?: 0)
                             apply()
                         }
-                        Log.e("API_ERROR", "Gagal mengirim data: ${response.code()} - ${response.errorBody()?.string()}")
+                        Log.d("API_SUCCESS", "Check-in berhasil, ID: ${attendanceRecord?.id}")
                     }
                 } catch (e: Exception) {
                     Log.e("API_CRASH", "Kesalahan jaringan: ${e.message}")
@@ -276,6 +307,7 @@
                     if (response.isSuccessful) {
                         val attendanceRecord = response.body()
                         val photoUrlKeluar = attendanceRecord?.fotoKeluar
+
                         _todayAttendance.value = _todayAttendance.value.copy(
                             jamKeluar = time,
                             statusKeluar = status,
