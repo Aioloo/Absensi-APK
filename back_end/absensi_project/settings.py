@@ -155,3 +155,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# Session Configuration untuk Admin Security
+SESSION_COOKIE_AGE = 1800  # 30 menit (1800 detik)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expire saat browser ditutup
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session setiap request
+SESSION_COOKIE_SECURE = False  # Set True jika menggunakan HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access ke session cookie
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
