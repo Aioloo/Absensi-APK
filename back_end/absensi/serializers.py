@@ -1,9 +1,17 @@
 from rest_framework import serializers
-from .models import Karyawan, Absensi, TimeOff
+from .models import Karyawan, Absensi, TimeOff, Perusahaan
 from django.utils import timezone
+
+class PerusahaanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Perusahaan
+        fields = ['id', 'nama', 'kode']
 
 class KaryawanSerializer(serializers.ModelSerializer):
     sisa_cuti = serializers.SerializerMethodField()
+    perusahaan = PerusahaanSerializer(read_only=True)
+    foto_profil = serializers.SerializerMethodField()
+    
     class Meta:
         model = Karyawan
         fields = ['id', 'nama','perusahaan', 'email', 'divisi','foto_profil', 'jatah_cuti_per_bulan', 'sisa_cuti']
@@ -12,6 +20,7 @@ class KaryawanSerializer(serializers.ModelSerializer):
         if obj.foto_profil:
             request = self.context.get('request')
             return request.build_absolute_uri(obj.foto_profil.url)
+        return None
         
     def get_sisa_cuti(self, obj):
         cuti_terpakai = TimeOff.objects.filter(

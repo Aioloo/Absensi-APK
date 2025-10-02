@@ -96,7 +96,7 @@ class AbsensiViewSet(viewsets.ViewSet):
         return Response(serializer.data)
     
     def list(self, request):
-        return self.history
+        return self.history(request)
     
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def checkin(self, request):

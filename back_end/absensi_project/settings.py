@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-ALLOWED_HOSTS = ['172.21.118.48', '192.168.1.10', 'localhost']
+ALLOWED_HOSTS = ['172.21.118.48', '192.168.100.241', 'localhost', '192.168.100.241:8000', '*']
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -46,12 +46,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'absensi',
     'rest_framework',
     'rest_framework_simplejwt'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,7 +91,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'absensi_db',
         'USER': 'postgres',
-        'PASSWORD': 'ingmar107',
+        'PASSWORD': '12345',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -142,3 +144,14 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
+
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True  # Only for development
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
+CORS_ALLOW_CREDENTIALS = True

@@ -20,6 +20,21 @@ JENIS_TIMEOFF = [
         ('Sakit', 'Sakit'),
 ]
 
+class Perusahaan(models.Model):
+    nama = models.CharField(max_length=255, unique=True)
+    kode = models.CharField(max_length=10, unique=True, help_text="Kode singkat perusahaan (contoh: PAL)")
+    alamat = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perusahaan"
+        verbose_name_plural = "Perusahaan"
+        ordering = ['nama']
+
+    def __str__(self):
+        return self.nama
+
 class TimeOff(models.Model):
     karyawan = models.ForeignKey('Karyawan', on_delete=models.CASCADE, related_name='timeoff')
     jenis = models.CharField(max_length=20, choices=JENIS_TIMEOFF)
@@ -47,7 +62,7 @@ class TimeOff(models.Model):
 class Karyawan(models.Model):
         user = models.OneToOneField(User, on_delete=models.CASCADE)
         nama = models.CharField(max_length=255)
-        perusahaan = models.CharField(max_length=255, default='PT PAL Indonesia (PERSERO)')
+        perusahaan = models.ForeignKey(Perusahaan, on_delete=models.CASCADE, related_name='karyawan')
         divisi = models.CharField(max_length=255, null=True, blank=True)
         email = models.EmailField(unique=True)
         foto_profil = models.ImageField(upload_to='karyawan_photos/', null=True, blank=True)
