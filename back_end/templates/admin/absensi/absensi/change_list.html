@@ -1,0 +1,159 @@
+{% extends "admin/change_list.html" %}
+{% load admin_urls static admin_list %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .absensi-stats {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            border-left: 4px solid #0073aa;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-card.on-time { border-left-color: #28a745; }
+        .stat-card.late { border-left-color: #dc3545; }
+        .stat-card.total { border-left-color: #007cba; }
+        .stat-card.current { border-left-color: #6c757d; }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .stat-percentage {
+            font-size: 14px;
+            color: #666;
+        }
+        .export-btn {
+            transition: all 0.3s ease;
+        }
+        .export-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .excel-btn:hover {
+            background: #155724 !important;
+        }
+        .csv-btn:hover {
+            background: #545b62 !important;
+        }
+    </style>
+    
+    <script>
+        function exportToExcel() {
+            // Get current URL parameters
+            const currentParams = new URLSearchParams(window.location.search);
+            
+            // Create export URL with current filters
+            const exportUrl = 'export-excel/?' + currentParams.toString();
+            
+            // Open export URL in new window or current window
+            window.open(exportUrl, '_self');
+        }
+        
+        function exportToCSV() {
+            // Get current URL parameters
+            const currentParams = new URLSearchParams(window.location.search);
+            
+            // Create export URL with current filters
+            const exportUrl = 'export-csv/?' + currentParams.toString();
+            
+            // Open export URL in new window or current window
+            window.open(exportUrl, '_self');
+        }
+        
+        // Add loading indicator when export buttons are clicked
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportButtons = document.querySelectorAll('.export-btn');
+            exportButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Mengunduh...';
+                    this.style.opacity = '0.7';
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.style.opacity = '1';
+                    }, 3000);
+                });
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block content_title %}
+    <h1>Data Absensi Karyawan</h1>
+    
+    {% if absensi_stats %}
+    <div class="absensi-stats">
+        <h2 style="margin-top: 0; color: #333;">📊 Statistik Absensi</h2>
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-number">{{ absensi_stats.total_records }}</div>
+                <div class="stat-label">Total Record</div>
+            </div>
+            
+            <div class="stat-card on-time">
+                <div class="stat-number">{{ absensi_stats.on_time_count }}</div>
+                <div class="stat-label">Tepat Waktu</div>
+                <div class="stat-percentage">({{ absensi_stats.on_time_percentage }}%)</div>
+            </div>
+            
+            <div class="stat-card late">
+                <div class="stat-number">{{ absensi_stats.late_count }}</div>
+                <div class="stat-label">Terlambat</div>
+                <div class="stat-percentage">({{ absensi_stats.late_percentage }}%)</div>
+            </div>
+            
+            <div class="stat-card current">
+                <div class="stat-number">{{ absensi_stats.current_month_count }}</div>
+                <div class="stat-label">Bulan Ini</div>
+            </div>
+            
+            <div class="stat-card current">
+                <div class="stat-number">{{ absensi_stats.current_week_count }}</div>
+                <div class="stat-label">Minggu Ini</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Buttons -->
+    <div class="export-section" style="margin: 20px 0; padding: 15px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 8px;">
+        <h3 style="margin: 0 0 10px 0; color: #0056b3;">💾 Export Data</h3>
+        <p style="margin: 0 0 15px 0; color: #666; font-size: 14px;">
+            Export data absensi sesuai dengan filter yang sedang aktif
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="javascript:void(0)" onclick="exportToExcel()" class="export-btn excel-btn" style="background: #1d7044; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block;">
+                📗 Export ke Excel (.xlsx)
+            </a>
+            <a href="javascript:void(0)" onclick="exportToCSV()" class="export-btn csv-btn" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block;">
+                📄 Export ke CSV
+            </a>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {{ block.super }}
+{% endblock %}

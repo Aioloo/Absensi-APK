@@ -100,6 +100,9 @@ class AbsensiViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def checkin(self, request):
+        from django.utils import timezone as django_timezone
+        import pytz
+        
         karyawan = Karyawan.objects.get(user=request.user)
         today = date.today()
         absensi_sudah_ada = Absensi.objects.filter(karyawan=karyawan, tanggal=today).exists()
@@ -107,31 +110,88 @@ class AbsensiViewSet(viewsets.ViewSet):
         if absensi_sudah_ada:
             return Response({"detail": "Anda sudah absen masuk hari ini."}, status=status.HTTP_400_BAD_REQUEST)
         
-        data = request.data
-        data['karyawan'] = karyawan.id
+        # KEAMANAN: Gunakan waktu SERVER, bukan waktu client
+        jakarta_tz = pytz.timezone('Asia/Jakarta')
+        server_time_now = django_timezone.now().astimezone(jakarta_tz)
+        server_jam_masuk = server_time_now.time()
+        server_tanggal = server_time_now.date()
         
-        jam_masuk_str = data.get('jam_masuk')
-        if not jam_masuk_str:
-            return Response({"error": "Waktu masuk tidak disertakan."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            jam_masuk_obj = datetime.strptime(jam_masuk_str, '%H:%M').time()
-        except ValueError:
-            return Response({"error": "Format waktu masuk tidak valid. Gunakan HH:MM."}, status=status.HTTP_400_BAD_REQUEST)
-
+        # Ambil waktu dari client untuk validasi (opsional)
+        client_jam_masuk_str = request.data.get('jam_masuk')
+        client_jam_masuk = None
+        
+        if client_jam_masuk_str:
+            try:
+                client_jam_masuk = datetime.strptime(client_jam_masuk_str, '%H:%M').time()
+            except ValueError:
+                pass
+        
+        # VALIDASI ANTI-MANIPULASI: Bandingkan waktu client vs server
+        time_diff_minutes = 0
+        if client_jam_masuk:
+            client_minutes = client_jam_masuk.hour * 60 + client_jam_masuk.minute
+            server_minutes = server_jam_masuk.hour * 60 + server_jam_masuk.minute
+            time_diff_minutes = abs(server_minutes - client_minutes)
+            
+            # BUAT LOG AUDIT UNTUK SEMUA PERCOBAAN
+            from .models import SecurityAuditLog
+            severity = 'LOW'
+            if time_diff_minutes > 30:
+                severity = 'CRITICAL'
+            elif time_diff_minutes > 15:
+                severity = 'HIGH'
+            elif time_diff_minutes > 10:
+                severity = 'MEDIUM'
+            
+            # Log audit
+            SecurityAuditLog.objects.create(
+                karyawan=karyawan,
+                audit_type='TIME_MANIPULATION',
+                description=f'Percobaan check-in dengan selisih waktu {time_diff_minutes} menit. Client: {client_jam_masuk}, Server: {server_jam_masuk}',
+                client_time=client_jam_masuk,
+                server_time=server_jam_masuk,
+                time_difference_minutes=time_diff_minutes,
+                severity=severity,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                ip_address=request.META.get('REMOTE_ADDR', '')
+            )
+            
+            # Jika selisih > 10 menit, curigai manipulasi
+            if time_diff_minutes > 10:
+                return Response({
+                    "error": "Terdeteksi ketidaksesuaian waktu sistem. Pastikan waktu HP Anda sinkron dengan server.",
+                    "server_time": server_jam_masuk.strftime('%H:%M'),
+                    "client_time": client_jam_masuk.strftime('%H:%M'),
+                    "warning": "Sistem menggunakan waktu server untuk keamanan.",
+                    "security_alert": "Aktivitas ini telah dicatat dalam log audit keamanan."
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # GUNAKAN WAKTU SERVER (ANTI-MANIPULASI)
         checkin_limit = time(7, 30)
-        status_absensi = 'On Time' if jam_masuk_obj <= checkin_limit else 'Telat'
-
+        status_absensi = 'On Time' if server_jam_masuk <= checkin_limit else 'Telat'
+        
+        # Siapkan data dengan waktu server
+        data = request.data.copy()
+        data['karyawan'] = karyawan.id
+        data['jam_masuk'] = server_jam_masuk
         data['status_masuk'] = status_absensi
-        data['jam_masuk'] = jam_masuk_obj
-
+        data['tanggal'] = server_tanggal  # Force server date
+        
         serializer = AbsensiMasukSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(karyawan=karyawan)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        absensi = serializer.save(karyawan=karyawan)
+        
+        # Return response dengan waktu server
+        response_data = serializer.data
+        response_data['server_time'] = server_jam_masuk.strftime('%H:%M')
+        response_data['security_note'] = 'Waktu diverifikasi dengan server untuk keamanan'
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['patch'], parser_classes=[MultiPartParser, FormParser])
     def checkout(self, request, pk=None):
+        from django.utils import timezone as django_timezone
+        
         try:
             absensi = Absensi.objects.get(pk=pk, karyawan__user=request.user)
         except Absensi.DoesNotExist:
@@ -140,10 +200,88 @@ class AbsensiViewSet(viewsets.ViewSet):
         if absensi.jam_keluar:
             return Response({"detail": "Anda sudah absen keluar hari ini."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = AbsensiKeluarSerializer(absensi, data=request.data, partial=True)
+        # KEAMANAN: Gunakan waktu SERVER untuk checkout
+        try:
+            import pytz
+            jakarta_tz = pytz.timezone('Asia/Jakarta')
+            server_time_now = django_timezone.now().astimezone(jakarta_tz)
+        except ImportError:
+            # Fallback jika pytz tidak tersedia
+            server_time_now = django_timezone.now()
+        
+        server_jam_keluar = server_time_now.time()
+        
+        # Ambil waktu dari client untuk validasi
+        client_jam_keluar_str = request.data.get('jam_keluar')
+        client_jam_keluar = None
+        
+        if client_jam_keluar_str:
+            try:
+                from datetime import datetime
+                client_jam_keluar = datetime.strptime(client_jam_keluar_str, '%H:%M').time()
+            except ValueError:
+                pass
+        
+        # VALIDASI ANTI-MANIPULASI
+        time_diff_minutes = 0
+        if client_jam_keluar:
+            client_minutes = client_jam_keluar.hour * 60 + client_jam_keluar.minute
+            server_minutes = server_jam_keluar.hour * 60 + server_jam_keluar.minute
+            time_diff_minutes = abs(server_minutes - client_minutes)
+            
+            # BUAT LOG AUDIT CHECKOUT
+            from .models import SecurityAuditLog
+            severity = 'LOW'
+            if time_diff_minutes > 30:
+                severity = 'CRITICAL'
+            elif time_diff_minutes > 15:
+                severity = 'HIGH'
+            elif time_diff_minutes > 10:
+                severity = 'MEDIUM'
+            
+            # Log audit checkout
+            SecurityAuditLog.objects.create(
+                karyawan=absensi.karyawan,
+                audit_type='TIME_MANIPULATION',
+                description=f'Percobaan check-out dengan selisih waktu {time_diff_minutes} menit. Client: {client_jam_keluar}, Server: {server_jam_keluar}',
+                client_time=client_jam_keluar,
+                server_time=server_jam_keluar,
+                time_difference_minutes=time_diff_minutes,
+                severity=severity,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                ip_address=request.META.get('REMOTE_ADDR', '')
+            )
+            
+            # Jika selisih > 10 menit, curigai manipulasi
+            if time_diff_minutes > 10:
+                return Response({
+                    "error": "Terdeteksi ketidaksesuaian waktu sistem saat checkout.",
+                    "server_time": server_jam_keluar.strftime('%H:%M'),
+                    "client_time": client_jam_keluar.strftime('%H:%M'),
+                    "warning": "Sistem menggunakan waktu server untuk keamanan.",
+                    "security_alert": "Aktivitas ini telah dicatat dalam log audit keamanan."
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # FORCE GUNAKAN WAKTU SERVER 
+        from datetime import time
+        checkout_time = time(17, 0)
+        status_keluar = 'On Time' if server_jam_keluar >= checkout_time else 'Pulang Cepat'
+        
+        # Update data dengan waktu server
+        data = request.data.copy()
+        data['jam_keluar'] = server_jam_keluar.strftime('%H:%M')
+        data['status_keluar'] = status_keluar
+        
+        serializer = AbsensiKeluarSerializer(absensi, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        absensi_updated = serializer.save()
+        
+        # Response dengan info keamanan
+        response_data = serializer.data
+        response_data['server_time'] = server_jam_keluar.strftime('%H:%M')
+        response_data['security_note'] = 'Waktu checkout diverifikasi dengan server'
+        
+        return Response(response_data, status=status.HTTP_200_OK)
     
 class LoginView(APIView):
     def post(self, request):

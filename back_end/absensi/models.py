@@ -84,7 +84,7 @@ class Karyawan(models.Model):
 
 class Absensi(models.Model):
         karyawan = models.ForeignKey(Karyawan, on_delete=models.CASCADE)
-        tanggal = models.DateField(auto_now_add=True)
+        tanggal = models.DateField(default=timezone.now)
 
         # waktu
         jam_masuk = models.TimeField(blank=True, null=True)
@@ -107,3 +107,61 @@ class Absensi(models.Model):
 
         def __str__(self):
             return f"Absensi {self.karyawan.nama} pada {self.tanggal}"
+
+
+# 🔐 MODEL AUDIT KEAMANAN
+class SecurityAuditLog(models.Model):
+    AUDIT_TYPES = [
+        ('TIME_MANIPULATION', 'Manipulasi Waktu'),
+        ('LOCATION_MISMATCH', 'Lokasi Tidak Sesuai'),
+        ('SUSPICIOUS_LOGIN', 'Login Mencurigakan'),
+        ('DUPLICATE_ATTEMPT', 'Percobaan Duplikat'),
+        ('SYSTEM_VALIDATION', 'Validasi Sistem'),
+    ]
+    
+    karyawan = models.ForeignKey(Karyawan, on_delete=models.CASCADE)
+    audit_type = models.CharField(max_length=30, choices=AUDIT_TYPES)
+    description = models.TextField()
+    
+    # Time details
+    client_time = models.TimeField(null=True, blank=True)
+    server_time = models.TimeField(null=True, blank=True)
+    time_difference_minutes = models.IntegerField(null=True, blank=True)
+    
+    # Location details  
+    client_lat = models.DecimalField(max_digits=16, decimal_places=7, null=True, blank=True)
+    client_lng = models.DecimalField(max_digits=16, decimal_places=7, null=True, blank=True)
+    
+    # System info
+    user_agent = models.TextField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    
+    # Severity level
+    SEVERITY_CHOICES = [
+        ('LOW', 'Rendah'),
+        ('MEDIUM', 'Menengah'), 
+        ('HIGH', 'Tinggi'),
+        ('CRITICAL', 'Kritis'),
+    ]
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='MEDIUM')
+    
+    # Status handling
+    STATUS_CHOICES = [
+        ('PENDING', 'Menunggu Review'),
+        ('REVIEWED', 'Sudah Direview'),
+        ('RESOLVED', 'Teratasi'),
+        ('FALSE_POSITIVE', 'False Positive'),
+    ]
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_audits')
+    notes = models.TextField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Log Audit Keamanan"
+        verbose_name_plural = "Log Audit Keamanan"
+    
+    def __str__(self):
+        return f"{self.audit_type} - {self.karyawan.nama} ({self.created_at.strftime('%d/%m/%Y %H:%M')})"

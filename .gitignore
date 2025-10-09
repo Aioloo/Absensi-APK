@@ -46,6 +46,10 @@ Thumbs.db
 # Test files
 test_*.py
 *_test.py
+*security_test*.py
+create_test_*.py
+add_*_data.py
+manual_*.py
 
 # ==== BACK_END SPECIFIC ====
 
