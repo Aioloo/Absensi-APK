@@ -89,7 +89,7 @@ fun TimeOffScreen(navController: NavController, homeViewModel: HomeViewModel = v
 
                     jatahCuti?.let {
                         Text(
-                            text = "Sisa Jatah Cuti Bulan Ini : ${sisaCuti ?: 0} kali.",
+                            text = "Sisa Jatah Cuti Tahun Ini : ${sisaCuti ?: 0} kali.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

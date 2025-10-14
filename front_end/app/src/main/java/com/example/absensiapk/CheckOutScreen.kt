@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +63,8 @@ fun CheckOutScreen(
     var userLocation by remember { mutableStateOf("Mendapatkan Lokasi..") }
     var userLat by remember { mutableStateOf<Double?>(null) }
     var userLon by remember { mutableStateOf<Double?>(null) }
+    var alasan by remember { mutableStateOf("") }
+    var isEarlyLeave by remember { mutableStateOf(false) }
 
     val tempUri = remember(context) {
         val file = File.createTempFile("image", ".jpg", context.externalCacheDir)
@@ -140,12 +143,13 @@ fun CheckOutScreen(
                     onClick = {
                         val currentTime = LocalTime.now()
                         val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val checkOutHour = currentTime.hour
-                        val checkOutMinute = currentTime.minute
-                        val status = if ((checkOutHour == 15 && checkOutMinute >= 30) || (checkOutHour == 16 && checkOutMinute <= 30)) {
-                            "On Time"
-                        } else {
-                            "Telat"
+                        val checkOutLimit = LocalTime.of(16,30)
+                        val status = if(currentTime.isBefore(checkOutLimit))"Pulang Cepat" else "On Time"
+
+                        if(status == "Pulang Cepat" && alasan.isEmpty()){
+                            isEarlyLeave = true
+                            Toast.makeText(context, "Isi Alasan Pulang Cepat (Wajib)", Toast.LENGTH_LONG).show()
+                            return@TakePhotoButton
                         }
 
                         val attendanceId = homeViewModel.todayAttendance.value.id
@@ -157,7 +161,8 @@ fun CheckOutScreen(
                                 status = status,
                                 lat = userLat!!,
                                 lon = userLon!!,
-                                photoUri = capturedImageUri!!
+                                photoUri = capturedImageUri!!,
+                                alasan = alasan
                             )
                             navController.navigate("home")
                         } else {
@@ -168,6 +173,15 @@ fun CheckOutScreen(
             }
             Spacer(modifier = Modifier.height(48.dp))
             LocationSection(locationText = userLocation)
+            if(isEarlyLeave){
+                OutlinedTextField(
+                    value = alasan,
+                    onValueChange = {alasan = it},
+                    label = {Text("Alasan Pulang Cepat (Wajib)")},
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                )
+
+            }
         }
     }
 }

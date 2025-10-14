@@ -3,9 +3,14 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
-STATUS_CHOICES = [
+STATUS_IN_CHOICES = [
         ('On Time', 'On Time'),
         ('Telat', 'Telat'),
+    ]
+
+STATUS_OUT_CHOICES = [
+        ('On Time', 'On Time'),
+        ('Pulang Cepat', 'Pulang Cepat'),
     ]
 
 STATUS_TIMEOFF = [
@@ -52,7 +57,7 @@ class TimeOff(models.Model):
         if self.jenis == 'Cuti' and self.pk is None:
             sisa_cuti = self.karyawan.get_sisa_cuti()
             if sisa_cuti <= 0:
-                raise ValidationError('Anda tidak memiliki sisa cuti untuk bulan ini.')
+                raise ValidationError('Anda tidak memiliki sisa cuti untuk tahun ini.')
             
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -60,24 +65,22 @@ class TimeOff(models.Model):
 
 
 class Karyawan(models.Model):
-        user = models.OneToOneField(User, on_delete=models.CASCADE)
+        user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
         nama = models.CharField(max_length=255)
         perusahaan = models.ForeignKey(Perusahaan, on_delete=models.CASCADE, related_name='karyawan')
         divisi = models.CharField(max_length=255, null=True, blank=True)
         email = models.EmailField(unique=True)
         foto_profil = models.ImageField(upload_to='karyawan_photos/', null=True, blank=True)
-        jatah_cuti_per_bulan = models.PositiveIntegerField(default=3)
+        jatah_cuti_per_tahun = models.PositiveIntegerField(default=12)
 
         def get_sisa_cuti(self):    
-            cuti_terpakai_bulan_ini = TimeOff.objects.filter(
+            cuti_terpakai_tahun_ini = TimeOff.objects.filter(
                 karyawan=self,
                 jenis='Cuti',
                 status__in=['Approved'],
-                created_at__month=timezone.now().date().month,
                 created_at__year=timezone.now().date().year
             ).count()
-            
-            return self.jatah_cuti_per_bulan - cuti_terpakai_bulan_ini  
+            return self.jatah_cuti_per_tahun - cuti_terpakai_tahun_ini
 
         def __str__(self):
             return self.nama
@@ -85,6 +88,8 @@ class Karyawan(models.Model):
 class Absensi(models.Model):
         karyawan = models.ForeignKey(Karyawan, on_delete=models.CASCADE)
         tanggal = models.DateField(default=timezone.now)
+        alasan_keterlambatan = models.TextField(blank=True, null=True)
+        alasan_pulang_cepat = models.TextField(blank=True, null=True)
 
         # waktu
         jam_masuk = models.TimeField(blank=True, null=True)
@@ -102,8 +107,8 @@ class Absensi(models.Model):
         lokasi_keluar_long = models.DecimalField(max_digits=16, decimal_places=7, blank=True, null=True)
 
         #status
-        status_masuk = models.CharField(max_length=20, choices=STATUS_CHOICES, blank=True, null=True)
-        status_keluar = models.CharField(max_length=20, choices=STATUS_CHOICES, blank=True, null=True)
+        status_masuk = models.CharField(max_length=20, choices=STATUS_IN_CHOICES, blank=True, null=True)
+        status_keluar = models.CharField(max_length=20, choices=STATUS_OUT_CHOICES, blank=True, null=True)
 
         def __str__(self):
             return f"Absensi {self.karyawan.nama} pada {self.tanggal}"

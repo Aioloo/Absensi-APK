@@ -67,6 +67,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
 import com.example.absensiapk.api.RetrofitClient
 import com.example.absensiapk.models.AbsenceCountData
+import com.example.absensiapk.models.AttendanceData
 import com.example.absensiapk.modelview.HomeViewModel
 import com.example.absensiapk.modelview.LoginViewModel
 import kotlinx.coroutines.launch
@@ -83,19 +84,23 @@ private val tickerFlow: Flow<LocalTime> = flow {
     old.hour == new.hour && old.minute == new.minute
 }
 
+data class HeaderStateData(
+    val displayTimeStart: String,
+    val displayTimeEnd: String,
+    val isCheckInEnabled: Boolean,
+    val isCheckOutEnabled: Boolean
+)
+
 enum class AttendanceState {
-    CHECK_IN, CHECK_OUT, IDLE
+    ACTIVE_HOURS, IDLE
 }
 
 private fun getAttendanceState(currentTime: LocalTime): AttendanceState {
-    val checkInStart = LocalTime.of(6, 0)
-    val checkInEnd = LocalTime.of(12, 0)
-    val checkOutStart = LocalTime.of(15, 30)
-    val checkOutEnd = LocalTime.of(19, 0)
+    val checkInStart = LocalTime.of(5, 0)
+    val checkOutEnd = LocalTime.of(23, 59)
 
     return when {
-        currentTime.isAfter(checkOutStart) && currentTime.isBefore(checkOutEnd) -> AttendanceState.CHECK_OUT
-        currentTime.isAfter(checkInStart) && currentTime.isBefore(checkInEnd) -> AttendanceState.CHECK_IN
+        currentTime.isAfter(checkInStart) && currentTime.isBefore(checkOutEnd)->AttendanceState.ACTIVE_HOURS
         else -> AttendanceState.IDLE
     }
 }
@@ -111,6 +116,7 @@ fun HomeScreen(
     val karyawanName by homeViewModel.karyawanName.collectAsState()
     val karyawanFoto by homeViewModel.karyawanFoto.collectAsState()
     val absenceCounts by homeViewModel.absenceCount.collectAsState()
+    val todayAttendance by homeViewModel.todayAttendance.collectAsState()
 
 
     LaunchedEffect(Unit) {
@@ -189,7 +195,12 @@ fun HomeScreen(
                     .background(color = Abu)
                     .verticalScroll(scrollState)
             ) {
-                HeaderSection(navController, currentTime = currentTime, karyawanName = karyawanName)
+                HeaderSection(
+                    navController,
+                    currentTime = currentTime,
+                    karyawanName = karyawanName,
+                    todayAttendance = todayAttendance
+                    )
                 Spacer(modifier = Modifier.height(16.dp))
                 AbsenceCountSection(absenceCounts)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -235,34 +246,41 @@ fun TopAppBar(karyawanFoto: String?, onMenuClick: () -> Unit) {
 }
 
 @Composable
-fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawanName: String) {
+fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawanName: String, todayAttendance: AttendanceData) {
     val attendanceState = getAttendanceState(currentTime)
-    val isCheckOutTime = (attendanceState == AttendanceState.CHECK_OUT)
 
-    val titleText = when (attendanceState) {
-        AttendanceState.CHECK_IN -> "Check In Time !!"
-        AttendanceState.CHECK_OUT -> "Check Out Time !!"
-        else -> "Outside Absent Hours"
+    val hasCheckedIn = todayAttendance.jamMasuk != null
+    val hasCheckedOut = todayAttendance.jamKeluar != null
+
+    val checkInStartLimit = LocalTime.of(5, 0)
+    val checkInOnTimeEnd = LocalTime.of(7, 30)
+    val checkOutOnTimeStart = LocalTime.of(16, 30)
+    val dayEndLimit = LocalTime.of(23, 59)
+
+    val (displayTimeStart, displayTimeEnd) = when {
+        (currentTime.isAfter(checkInStartLimit) || currentTime == checkInStartLimit) &&
+                (currentTime.isBefore(checkInOnTimeEnd) || currentTime == checkInOnTimeEnd) -> Pair("05:00", "07:30")
+
+        (currentTime.isAfter(checkOutOnTimeStart) || currentTime == checkOutOnTimeStart) &&
+                (currentTime.isBefore(dayEndLimit)) -> Pair("16:30", "00:00")
+
+        (currentTime.isAfter(checkInOnTimeEnd) && currentTime.isBefore(checkOutOnTimeStart)) -> Pair("07:31", "16:29")
+
+        else -> Pair("-", "-")
     }
 
-    val displayTimeStart = if (isCheckOutTime) "15:30" else "06:00"
-    val displayTimeEnd = if (isCheckOutTime) "19:00" else "12:00"
-
-    val isCheckInEnabled = attendanceState == AttendanceState.CHECK_IN
-    val isCheckOutEnabled = attendanceState == AttendanceState.CHECK_OUT
-
-
-    val checkInbuttonColor = when (attendanceState) {
-        AttendanceState.CHECK_IN -> Color.Green
-        AttendanceState.CHECK_OUT -> Color.Gray
-        else -> Color.Gray
+    val titleText = when {
+        currentTime.isAfter(LocalTime.of(5, 0)) && currentTime.isBefore(LocalTime.of(7, 31)) -> "Check In Time"
+        currentTime.isAfter(LocalTime.of(7, 30)) && currentTime.isBefore(LocalTime.of(16, 30)) -> "Waktu Absensi Aktif"
+        currentTime.isAfter(LocalTime.of(16, 30)) && currentTime.isBefore(LocalTime.MIDNIGHT) -> "Check Out Time"
+        else -> "Di Luar Jam Kerja"
     }
 
-    val checkOutbuttonColor = when (attendanceState) {
-        AttendanceState.CHECK_IN -> Color.Gray
-        AttendanceState.CHECK_OUT -> Color.Red
-        else -> Color.Gray
-    }
+    val isCheckInEnabled = attendanceState == AttendanceState.ACTIVE_HOURS && !hasCheckedIn
+    val isCheckOutEnabled = hasCheckedIn && !hasCheckedOut
+
+    val checkInbuttonColor = if (isCheckInEnabled) Color.Green else Color.Gray
+    val checkOutbuttonColor = if (isCheckOutEnabled) Color.Red else Color.Gray
 
     Column(
         modifier = Modifier
@@ -454,7 +472,6 @@ fun AbsenceCountSection(counts: AbsenceCountData?) {
                     )
                 }
 
-
                 Column(
                     modifier = Modifier
                         .padding(16.dp),
@@ -552,13 +569,14 @@ fun StatusItem(
 
     val timeColor = when (status) {
         "On Time" -> Color.Green
-        "Telat" -> Color.Red
+        "Telat", "Pulang Cepat" -> Color.Red
         else -> Color.Gray
     }
 
     val displayStatus = when (status) {
         "On Time" -> "On Time"
         "Telat" -> "Telat"
+        "Pulang Cepat" -> "Pulang Cepat"
         else -> "-"
     }
 

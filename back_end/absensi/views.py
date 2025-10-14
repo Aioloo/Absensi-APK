@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -26,7 +27,7 @@ class TimeOffViewSet(viewsets.ViewSet):
         if request.data.get('jenis') == 'Cuti':
              sisa_cuti = karyawan.get_sisa_cuti()
              if sisa_cuti <= 0:
-                 return Response({'error': 'Anda tidak memiliki sisa cuti untuk bulan ini.'}, status=status.HTTP_400_BAD_REQUEST)
+                 return Response({'error': 'Anda tidak memiliki sisa cuti untuk tahun ini.'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = TimeOffSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -70,6 +71,34 @@ class KaryawanViewSet(viewsets.ModelViewSet):
         # Filter karyawan berdasarkan perusahaan yang sama dengan user yang login
         user_karyawan = Karyawan.objects.get(user=self.request.user)
         return Karyawan.objects.filter(perusahaan=user_karyawan.perusahaan)
+    
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        # Tambahkan pemeriksaan izin admin di sini jika permission_classes adalah IsAuthenticated
+        if not self.request.user.is_staff:
+             return Response({'detail': 'Anda tidak memiliki izin untuk melakukan operasi ini.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 1. Validasi data
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Ambil data User (username dan password)
+        username = serializer.validated_data.pop('username')
+        password = serializer.validated_data.pop('password')
+        
+        # 3. Buat User baru
+        try:
+            user = User.objects.create_user(username=username, password=password)
+        except Exception as e:
+            return Response({'error': 'Gagal membuat akun user. Username mungkin sudah ada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. Buat objek Karyawan dan kaitkan dengan User
+        karyawan = Karyawan.objects.create(user=user, **serializer.validated_data)
+        
+        # 5. Kirim respons
+        response_serializer = KaryawanSerializer(karyawan, context={'request': request}) 
+        
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 class AbsensiViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -171,11 +200,14 @@ class AbsensiViewSet(viewsets.ViewSet):
         status_absensi = 'On Time' if server_jam_masuk <= checkin_limit else 'Telat'
         
         # Siapkan data dengan waktu server
-        data = request.data.copy()
+        data = request.data
         data['karyawan'] = karyawan.id
         data['jam_masuk'] = server_jam_masuk
         data['status_masuk'] = status_absensi
         data['tanggal'] = server_tanggal  # Force server date
+
+        if status_absensi == 'Telat' and not data.get('alasan_keterlambatan'):
+            return Response({"error": "Alasan keterlambatan wajib diisi jika Anda terlambat."}, status=status.HTTP_400_BAD_REQUEST)
         
         serializer = AbsensiMasukSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -264,13 +296,19 @@ class AbsensiViewSet(viewsets.ViewSet):
         
         # FORCE GUNAKAN WAKTU SERVER 
         from datetime import time
-        checkout_time = time(17, 0)
-        status_keluar = 'On Time' if server_jam_keluar >= checkout_time else 'Pulang Cepat'
+        checkout_time = time(16, 30)
+        status_keluar = 'Pulang Cepat' if server_jam_keluar < checkout_time else 'On Time'
+
+        alasan_pulang_cepat = request.data.get('alasan_pulang_cepat', '')
+
+        if status_keluar == 'Pulang Cepat' and not alasan_pulang_cepat:
+            return Response({"error": "Alasan pulang cepat wajib diisi jika Anda pulang sebelum jam 16:30."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Update data dengan waktu server
         data = request.data.copy()
         data['jam_keluar'] = server_jam_keluar.strftime('%H:%M')
         data['status_keluar'] = status_keluar
+        data['alasan_pulang_cepat'] = alasan_pulang_cepat
         
         serializer = AbsensiKeluarSerializer(absensi, data=data, partial=True)
         serializer.is_valid(raise_exception=True)

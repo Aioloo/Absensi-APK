@@ -1,9 +1,11 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from datetime import datetime, timedelta
-from django.db import models
+from django.db import transaction
+from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.urls import path
 from django.shortcuts import redirect
@@ -202,9 +204,35 @@ class PerusahaanAdmin(admin.ModelAdmin):
     search_fields = ('nama', 'kode')
     ordering = ['nama']
 
+
+class KaryawanAdminForm(forms.ModelForm):
+    # Field baru untuk input NIP (digunakan sebagai username) dan Password
+    nip = forms.CharField(max_length=150, label='NIP', required=False)
+    password = forms.CharField(widget=forms.PasswordInput, label='Password', required=False)
+    
+    class Meta:
+        model = Karyawan
+        # Tambahkan field 'nip' dan 'password' ke daftar fields di form
+        fields = (
+            'nip', 'password', 'nama', 'perusahaan', 'divisi', 'email', 
+            'foto_profil', 'jatah_cuti_per_tahun'
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validasi: Jika membuat baru, NIP dan Password wajib diisi
+        if not self.instance.pk and not cleaned_data.get('nip'):
+            raise forms.ValidationError("NIP wajib diisi untuk karyawan baru.")
+        if not self.instance.pk and not cleaned_data.get('password'):
+            raise forms.ValidationError("Password wajib diisi untuk karyawan baru.")
+        
+        return cleaned_data
+
+        
 # Kustomisasi model Karyawan
 @admin.register(Karyawan)
 class KaryawanAdmin(admin.ModelAdmin):
+    form = KaryawanAdminForm
     # Field yang akan ditampilkan di halaman daftar
     list_display = ('nama', 'perusahaan', 'divisi', 'email')
     # Field yang bisa dicari
@@ -234,13 +262,52 @@ class KaryawanAdmin(admin.ModelAdmin):
                 except Karyawan.DoesNotExist:
                     kwargs["queryset"] = Perusahaan.objects.none()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    fieldsets = (
+        ('Data Login', {
+            # Pastikan 'nip' dan 'password' hanya muncul saat pembuatan baru
+            'fields': ('nip', 'password')
+        }),
+        ('Data Karyawan', {
+            'fields': ('nama', 'perusahaan', 'divisi', 'email', 'foto_profil', 'jatah_cuti_per_tahun'),
+        }),
+    )
+
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        if obj.pk:
+            # Mode "Change": Hanya simpan Karyawan, tidak buat User baru
+            super().save_model(request, obj, form, change)
+            return
+
+        # Mode "Add": Buat User dan Karyawan bersamaan
+        nip = form.cleaned_data.get('nip')
+        password = form.cleaned_data.get('password')
+
+        # 1. Buat objek User baru
+        try:
+            user = User.objects.create_user(username=nip, password=password)
+            user.is_staff = False # Biasanya karyawan non-admin
+            user.save()
+        except Exception as e:
+            # Jika username sudah ada (NIP duplikat), Django akan menangkap ini.
+            raise forms.ValidationError(f"Gagal membuat User: NIP {nip} mungkin sudah terdaftar.")
+        
+        # 2. Hubungkan Karyawan dengan User dan simpan
+        obj.user = user
+        super().save_model(request, obj, form, change) # Simpan objek Karyawan
+        
+        # Hapus field 'nip' dan 'password' dari data form agar tidak disimpan ke model Karyawan
+        del form.cleaned_data['nip']
+        del form.cleaned_data['password']
 
 # Kustomisasi model Absensi
 @admin.register(Absensi)
 class AbsensiAdmin(admin.ModelAdmin):
     list_display = (
         'karyawan', 'tanggal', 'jam_masuk', 'jam_keluar', 
-        'status_masuk', 'status_keluar', 'get_durasi_kerja'
+        'status_masuk', 'status_keluar', 'get_durasi_kerja',
+        'alasan_keterlambatan'
     )
     list_filter = (
         MonthFilter,           # Filter Bulan
@@ -252,7 +319,7 @@ class AbsensiAdmin(admin.ModelAdmin):
         'karyawan__perusahaan',
         'karyawan__divisi'
     )
-    search_fields = ('karyawan__nama', 'karyawan__email')
+    search_fields = ('karyawan__nama', 'karyawan__email','alasan_keterlambatan')
     date_hierarchy = 'tanggal'  # Navigation berdasarkan tanggal
     ordering = ['-tanggal', '-jam_masuk']
     list_per_page = 50  # Pagination

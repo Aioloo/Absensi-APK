@@ -45,6 +45,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -67,6 +68,8 @@ fun CheckInScreen(
     var userLocation by remember { mutableStateOf("Mendapatkan Lokasi..") }
     var userLat by remember { mutableStateOf<Double?>(null) }
     var userLon by remember { mutableStateOf<Double?>(null) }
+    var alasan by remember { mutableStateOf("") } // <-- State untuk alasan
+    var isLate by remember { mutableStateOf(false)}
 
     val tempUri = remember(context) {
         val file = File.createTempFile("image", ".jpg", context.externalCacheDir)
@@ -143,12 +146,13 @@ fun CheckInScreen(
                     onClick = {
                         val currentTime = LocalTime.now()
                         val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                        val checkInHour = currentTime.hour
-                        val checkInMinute = currentTime.minute
-                        val status = if (checkInHour < 7 || (checkInHour == 7 && checkInMinute <= 30)) {
-                            "On Time"
-                        } else {
-                            "Telat"
+                        val checkInLimit = LocalTime.of(7, 30)
+                        val status = if (currentTime.isAfter(checkInLimit)) "Telat" else "On Time"
+
+                        if (status == "Telat" && alasan.isEmpty()){
+                            isLate = true
+                            Toast.makeText(context, "Isi Alasan Keterlambatan Check In", Toast.LENGTH_LONG).show()
+                            return@TakePhotoButton
                         }
 
                         val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
@@ -161,7 +165,8 @@ fun CheckInScreen(
                                 status = status,
                                 lat = userLat!!,
                                 lon = userLon!!,
-                                photoUri = capturedImageUri!!
+                                photoUri = capturedImageUri!!,
+                                alasan = alasan
                             )
                             navController.navigate("home")
                         } else {
@@ -172,6 +177,14 @@ fun CheckInScreen(
             }
             Spacer(modifier = Modifier.height(48.dp))
             LocationSection(locationText = userLocation)
+            if (isLate){
+                OutlinedTextField(
+                    value = alasan,
+                    onValueChange = {alasan = it},
+                    label = { Text("Alasan Keterlambatan (Wajib)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

@@ -18,7 +18,8 @@ interface ApiService {
         @Part("status_masuk") statusMasuk: RequestBody,
         @Part fotoMasuk: MultipartBody.Part,
         @Part("lokasi_masuk_lat") lokasiMasukLat: RequestBody,
-        @Part("lokasi_masuk_long") lokasiMasukLong: RequestBody
+        @Part("lokasi_masuk_long") lokasiMasukLong: RequestBody,
+        @Part("alasan_keterlambatan") alasanKeterlambatan: RequestBody
     ): Response<AttendanceData>
 
     @Multipart
@@ -29,7 +30,8 @@ interface ApiService {
         @Part("status_keluar") statusKeluar: RequestBody,
         @Part fotoKeluar: MultipartBody.Part,
         @Part("lokasi_keluar_lat") lokasiKeluarLat: RequestBody,
-        @Part("lokasi_keluar_long") lokasiKeluarLong: RequestBody
+        @Part("lokasi_keluar_long") lokasiKeluarLong: RequestBody,
+        @Part("alasan_pulang_cepat") alasanPulangCepat: RequestBody
     ): Response<AttendanceData>
 
     @FormUrlEncoded

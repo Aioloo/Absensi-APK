@@ -16,7 +16,7 @@ data class KaryawanData(
     val email: String?,
     @SerializedName("foto_profil")
     val fotoProfil: String?,
-    @SerializedName("jatah_cuti_per_bulan") val jatahCutiPerBulan: Int?,
+    @SerializedName("jatah_cuti_per_tahun") val jatahCutiPerTahun: Int?,
     @SerializedName("sisa_cuti") val sisaCutiPerBulan: Int?,
     @SerializedName("perusahaan") val perusahaan: PerusahaanData?
 )

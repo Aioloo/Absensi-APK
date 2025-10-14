@@ -139,7 +139,7 @@
                         if (response.isSuccessful && response.body() != null) {
                             _karyawanName.value = response.body()!!.nama
                             _karyawanFoto.value = response.body()!!.fotoProfil
-                            _jatahCuti.value = response.body()!!.jatahCutiPerBulan
+                            _jatahCuti.value = response.body()!!.jatahCutiPerTahun
                             _sisaCuti.value = response.body()!!.sisaCutiPerBulan
                         }
                     } catch (e: Exception) {
@@ -236,7 +236,7 @@
             return file
         }
 
-        fun submitCheckIn(karyawanId: Int, time: String, status: String, lat: Double, lon: Double, photoUri: Uri) {
+        fun submitCheckIn(karyawanId: Int, time: String, status: String, lat: Double, lon: Double, photoUri: Uri, alasan: String="") {
             viewModelScope.launch {
                 try {
                     val tempFile = uriToFile(context, photoUri)
@@ -249,7 +249,8 @@
                         statusMasuk = status.toRequestBody(),
                         lokasiMasukLat = lat.toString().toRequestBody(),
                         lokasiMasukLong = lon.toString().toRequestBody(),
-                        fotoMasuk = fotoPart
+                        fotoMasuk = fotoPart,
+                        alasanKeterlambatan = alasan.toRequestBody()
                     )
 
                     if (response.isSuccessful) {
@@ -263,6 +264,7 @@
                             fotoMasuk = photoUrl,
                             lokasiMasukLat = lat,
                             lokasiMasukLong = lon,
+                            alasanKeterlambatan = alasan
                         )
 
                         val prefs = context.getSharedPreferences("absensi_prefs", Context.MODE_PRIVATE)
@@ -279,7 +281,7 @@
             }
         }
 
-        fun submitCheckOut(time: String, status: String, lat: Double, lon: Double, photoUri: Uri) {
+        fun submitCheckOut(time: String, status: String, lat: Double, lon: Double, photoUri: Uri, alasan: String = "") {
             viewModelScope.launch {
                 val prefs = context.getSharedPreferences("absensi_prefs", Context.MODE_PRIVATE)
                 val attendanceId = prefs.getInt("attendance_id", 0)
@@ -301,7 +303,8 @@
                         statusKeluar = status.toRequestBody(),
                         lokasiKeluarLat = lat.toString().toRequestBody(),
                         lokasiKeluarLong = lon.toString().toRequestBody(),
-                        fotoKeluar = fotoPart
+                        fotoKeluar = fotoPart,
+                        alasanPulangCepat = alasan.toRequestBody()
                     )
 
                     if (response.isSuccessful) {
@@ -313,7 +316,8 @@
                             statusKeluar = status,
                             fotoKeluar = photoUrlKeluar,
                             lokasiKeluarLat = lat,
-                            lokasiKeluarLong = lon
+                            lokasiKeluarLong = lon,
+                            alasanPulangCepat = alasan
                         )
                     }else {
                         Log.e("HomeViewModel", "Gagal checkout: ${response.code()} - ${response.errorBody()?.string()}")}

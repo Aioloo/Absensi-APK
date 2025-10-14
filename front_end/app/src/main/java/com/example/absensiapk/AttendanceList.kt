@@ -188,13 +188,14 @@ fun AttendanceStatusItem(
 ) {
     val timeColor = when (status) {
         "On Time"-> Color.Green
-        "Telat" -> Color.Red
+        "Telat","Pulang Cepat" -> Color.Red
         else -> Color.Gray
     }
 
     val displayStatus = when (status) {
         "On Time" -> "On Time"
         "Telat" -> "Telat"
+        "Pulang Cepat" -> "Pulang Cepat"
         else -> "-"
     }
 
