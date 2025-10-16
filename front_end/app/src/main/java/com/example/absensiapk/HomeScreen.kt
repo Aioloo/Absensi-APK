@@ -73,6 +73,11 @@ import com.example.absensiapk.modelview.LoginViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 
 
 private val tickerFlow: Flow<LocalTime> = flow {
@@ -83,13 +88,6 @@ private val tickerFlow: Flow<LocalTime> = flow {
 }.distinctUntilChanged { old, new ->
     old.hour == new.hour && old.minute == new.minute
 }
-
-data class HeaderStateData(
-    val displayTimeStart: String,
-    val displayTimeEnd: String,
-    val isCheckInEnabled: Boolean,
-    val isCheckOutEnabled: Boolean
-)
 
 enum class AttendanceState {
     ACTIVE_HOURS, IDLE
@@ -216,8 +214,8 @@ fun TopAppBar(karyawanFoto: String?, onMenuClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp)
             .background(BluePAL)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween

@@ -61,7 +61,7 @@ fun TimeOffScreen(navController: NavController, homeViewModel: HomeViewModel = v
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White),
+                .background(BluePAL),
             contentAlignment = Alignment.Center
         ){
             Card(
@@ -198,8 +198,8 @@ fun TimeOffTopBar(navController: NavController){
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
             .background(BluePAL)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
