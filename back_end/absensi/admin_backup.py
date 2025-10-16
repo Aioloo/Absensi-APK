@@ -12,202 +12,10 @@ from django.shortcuts import redirect
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from .models import Karyawan, Absensi, TimeOff, Perusahaan, SecurityAuditLog, Admin
+from .models import Karyawan, Absensi, TimeOff, Perusahaan, SecurityAuditLog
 
 # Unregister Groups model karena tidak digunakan
 admin.site.unregister(Group)
-
-# ================== HELPER FUNCTIONS FOR ROLE-BASED ACCESS ==================
-def get_admin_role(user):
-    """Helper function untuk mendapatkan role admin dari user"""
-    # Resolve SimpleLazyObject to actual User instance
-    if hasattr(user, '_wrapped'):
-        user = user._wrapped
-    
-    # Check jika user anonymous atau tidak authenticated
-    if not user or not hasattr(user, 'is_authenticated') or not user.is_authenticated:
-        return None
-    
-    if user.is_superuser:
-        return 'superadmin'
-    
-    try:
-        admin_obj = Admin.objects.get(user=user)
-        return admin_obj.role
-    except Admin.DoesNotExist:
-        return None
-
-def get_admin_perusahaan(user):
-    """Helper function untuk mendapatkan perusahaan admin"""
-    # Resolve SimpleLazyObject to actual User instance
-    if hasattr(user, '_wrapped'):
-        user = user._wrapped
-    
-    # Check jika user anonymous atau tidak authenticated
-    if not user or not hasattr(user, 'is_authenticated') or not user.is_authenticated:
-        return None
-    
-    try:
-        admin_obj = Admin.objects.get(user=user)
-        return admin_obj.perusahaan
-    except Admin.DoesNotExist:
-        return None
-
-# ================== ADMIN MODEL ADMIN ==================
-# Untuk memindahkan ke bagian Authentication and Authorization
-# Kita perlu unregister dan register ulang dengan admin.site
-from django.contrib.admin.sites import site
-
-# Form untuk Admin dengan field password
-class AdminForm(forms.ModelForm):
-    password = forms.CharField(
-        label='Password',
-        widget=forms.PasswordInput,
-        required=False,
-        help_text='Kosongkan jika tidak ingin mengubah password. Password default: password123'
-    )
-    password_confirm = forms.CharField(
-        label='Konfirmasi Password',
-        widget=forms.PasswordInput,
-        required=False,
-        help_text='Masukkan password yang sama untuk konfirmasi'
-    )
-    
-    class Meta:
-        model = Admin
-        fields = ('username', 'email', 'role', 'perusahaan', 'is_active')
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        password_confirm = cleaned_data.get('password_confirm')
-        
-        # Validasi password match jika diisi
-        if password and password != password_confirm:
-            raise forms.ValidationError('Password dan konfirmasi password tidak sama!')
-        
-        return cleaned_data
-
-class AdminModelAdmin(admin.ModelAdmin):
-    form = AdminForm
-    list_display = ('username', 'email', 'role', 'perusahaan', 'is_active', 'created_at')
-    list_filter = ('role', 'perusahaan', 'is_active')
-    search_fields = ('username', 'email', 'perusahaan__nama')
-    
-    def get_fields(self, request, obj=None):
-        """Dynamic fields - tampilkan password hanya saat add atau edit"""
-        if obj:  # Edit
-            return ('username', 'email', 'role', 'perusahaan', 'is_active', 'password', 'password_confirm')
-        else:  # Add
-            return ('username', 'email', 'role', 'perusahaan', 'is_active', 'password', 'password_confirm')
-    
-    def get_readonly_fields(self, request, obj=None):
-        if obj:  # Edit
-            return ('created_at', 'updated_at')
-        return ()
-    
-    # Set agar muncul di bagian Authentication
-    def has_module_permission(self, request):
-        """Hanya superadmin yang bisa akses module Admin"""
-        return request.user.is_superuser
-    
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-    
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def save_model(self, request, obj, form, change):
-        """Override untuk handle password dan memberikan pesan"""
-        password = form.cleaned_data.get('password')
-        
-        # Simpan Admin object terlebih dahulu
-        super().save_model(request, obj, form, change)
-        
-        # Set password jika diisi
-        # KEAMANAN: Django set_password() otomatis melakukan:
-        # - Hashing dengan PBKDF2_SHA256 (870,000 iterasi)
-        # - Menambahkan salt yang unik
-        # - Password TIDAK disimpan plain text di database
-        if password:
-            if obj.user:
-                obj.user.set_password(password)  # ✅ Password di-hash secara otomatis
-                obj.user.save()
-                self.message_user(request, 
-                    f"Password untuk admin {obj.username} berhasil diubah.",
-                    level='success')
-            else:
-                self.message_user(request, 
-                    f"Admin {obj.username} berhasil dibuat. Password: {password}",
-                    level='warning')
-        elif not change:  # Jika baru dibuat dan password kosong
-            self.message_user(request, 
-                f"Admin {obj.username} berhasil dibuat dengan password default: 'password123'. "
-                f"Silakan beritahu admin untuk mengganti password setelah login pertama kali.",
-                level='warning')
-
-# ================== CUSTOM USER ADMIN FOR HRD ACCESS ==================
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-
-# Unregister default User admin
-admin.site.unregister(User)
-
-@admin.register(User)
-class CustomUserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active')
-    
-    def has_module_permission(self, request):
-        """Hanya superadmin dan HRD yang bisa akses module Users"""
-        if request.user.is_superuser:
-            return True
-        
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_view_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_add_permission(self, request):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_change_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_delete_permission(self, request, obj=None):
-        # Hanya superadmin yang bisa delete user
-        return request.user.is_superuser
-    
-    def get_queryset(self, request):
-        """Filter users berdasarkan perusahaan untuk HRD"""
-        qs = super().get_queryset(request)
-        
-        if request.user.is_superuser:
-            return qs
-        
-        role = get_admin_role(request.user)
-        perusahaan = get_admin_perusahaan(request.user)
-        
-        if role == 'hrd' and perusahaan:
-            # HRD hanya bisa lihat user yang terkait dengan karyawan di perusahaan mereka
-            karyawan_ids = Karyawan.objects.filter(perusahaan=perusahaan).values_list('user_id', flat=True)
-            return qs.filter(id__in=karyawan_ids)
-        
-        return qs.none()
 
 # Custom Filter untuk Bulan
 class MonthFilter(admin.SimpleListFilter):
@@ -395,22 +203,6 @@ class PerusahaanAdmin(admin.ModelAdmin):
     list_display = ('nama', 'kode', 'created_at')
     search_fields = ('nama', 'kode')
     ordering = ['nama']
-    
-    def has_module_permission(self, request):
-        """Hanya superadmin yang bisa akses Perusahaan"""
-        return request.user.is_superuser
-    
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-    
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
 
 
 class KaryawanAdminForm(forms.ModelForm):
@@ -442,38 +234,32 @@ class KaryawanAdminForm(forms.ModelForm):
 class KaryawanAdmin(admin.ModelAdmin):
     form = KaryawanAdminForm
     # Field yang akan ditampilkan di halaman daftar
-    list_display = ('nama', 'perusahaan', 'divisi', 'jabatan', 'email')
+    list_display = ('nama', 'perusahaan', 'divisi', 'email')
     # Field yang bisa dicari
     search_fields = ('nama', 'perusahaan__nama', 'divisi', 'email')
-    # Filter berdasarkan perusahaan dan jabatan
-    list_filter = ('perusahaan', 'divisi', 'jabatan')
+    # Filter berdasarkan perusahaan
+    list_filter = ('perusahaan', 'divisi')
     
     def get_queryset(self, request):
         """Filter data berdasarkan perusahaan user yang login"""
         qs = super().get_queryset(request)
-        
-        # Superadmin bisa lihat semua
         if request.user.is_superuser:
             return qs
-        
-        # Direktur dan HRD hanya lihat karyawan dari perusahaan mereka
-        role = get_admin_role(request.user)
-        perusahaan = get_admin_perusahaan(request.user)
-        
-        if role in ['direktur', 'hrd'] and perusahaan:
-            return qs.filter(perusahaan=perusahaan)
-        
-        # Jika bukan superadmin dan bukan admin dengan perusahaan, return none
-        return qs.none()
+        # Jika user bukan superuser, hanya tampilkan karyawan dari perusahaan yang sama
+        try:
+            karyawan = Karyawan.objects.get(user=request.user)
+            return qs.filter(perusahaan=karyawan.perusahaan)
+        except Karyawan.DoesNotExist:
+            return qs.none()
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Batasi pilihan perusahaan berdasarkan user yang login"""
         if db_field.name == "perusahaan":
             if not request.user.is_superuser:
-                perusahaan = get_admin_perusahaan(request.user)
-                if perusahaan:
-                    kwargs["queryset"] = Perusahaan.objects.filter(id=perusahaan.id)
-                else:
+                try:
+                    karyawan = Karyawan.objects.get(user=request.user)
+                    kwargs["queryset"] = Perusahaan.objects.filter(id=karyawan.perusahaan.id)
+                except Karyawan.DoesNotExist:
                     kwargs["queryset"] = Perusahaan.objects.none()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
@@ -483,7 +269,7 @@ class KaryawanAdmin(admin.ModelAdmin):
             'fields': ('nip', 'password')
         }),
         ('Data Karyawan', {
-            'fields': ('nama', 'perusahaan', 'divisi', 'jabatan', 'email', 'foto_profil', 'jatah_cuti_per_tahun'),
+            'fields': ('nama', 'perusahaan', 'divisi', 'email', 'foto_profil', 'jatah_cuti_per_tahun'),
         }),
     )
 
@@ -537,23 +323,6 @@ class AbsensiAdmin(admin.ModelAdmin):
     date_hierarchy = 'tanggal'  # Navigation berdasarkan tanggal
     ordering = ['-tanggal', '-jam_masuk']
     list_per_page = 50  # Pagination
-    
-    def get_queryset(self, request):
-        """Filter data berdasarkan perusahaan admin"""
-        qs = super().get_queryset(request)
-        
-        # Superadmin bisa lihat semua
-        if request.user.is_superuser:
-            return qs
-        
-        # Direktur dan HRD hanya lihat absensi karyawan dari perusahaan mereka
-        role = get_admin_role(request.user)
-        perusahaan = get_admin_perusahaan(request.user)
-        
-        if role in ['direktur', 'hrd'] and perusahaan:
-            return qs.filter(karyawan__perusahaan=perusahaan)
-        
-        return qs.none()
     
     # Actions untuk bulk operations
     actions = ['export_to_csv', 'export_to_excel', 'mark_as_present']
@@ -904,21 +673,15 @@ class TimeOffAdmin(admin.ModelAdmin):
     actions = ['approve_requests', 'reject_requests']
     
     def get_queryset(self, request):
-        """Filter data berdasarkan perusahaan admin"""
+        """Filter data berdasarkan perusahaan user yang login"""
         qs = super().get_queryset(request)
-        
-        # Superadmin bisa lihat semua
         if request.user.is_superuser:
             return qs
-        
-        # Direktur dan HRD hanya lihat time off dari perusahaan mereka
-        role = get_admin_role(request.user)
-        perusahaan = get_admin_perusahaan(request.user)
-        
-        if role in ['direktur', 'hrd'] and perusahaan:
-            return qs.filter(karyawan__perusahaan=perusahaan)
-        
-        return qs.none()
+        try:
+            karyawan = Karyawan.objects.get(user=request.user)
+            return qs.filter(karyawan__perusahaan=karyawan.perusahaan)
+        except Karyawan.DoesNotExist:
+            return qs.none()
     
     @admin.action(description="Setujui pengajuan yang dipilih")
     def approve_requests(self, request, queryset):
@@ -991,28 +754,15 @@ class SecurityAuditLogAdmin(admin.ModelAdmin):
         return obj.description
     description_short.short_description = 'Deskripsi'
     
-    def has_module_permission(self, request):
-        """Hanya superadmin yang bisa akses SecurityAuditLog"""
-        return request.user.is_superuser
-    
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-    
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        # Hanya superadmin yang bisa lihat
         if request.user.is_superuser:
             return qs
-        return qs.none()
+        try:
+            karyawan = Karyawan.objects.get(user=request.user)
+            return qs.filter(karyawan__perusahaan=karyawan.perusahaan)
+        except Karyawan.DoesNotExist:
+            return qs.none()
     
     @admin.action(description="Tandai sebagai sudah direview")
     def mark_as_reviewed(self, request, queryset):
@@ -1025,9 +775,3 @@ class SecurityAuditLogAdmin(admin.ModelAdmin):
         self.message_user(request, f"{queryset.count()} log audit telah ditandai sebagai false positive.")
     
     actions = ['mark_as_reviewed', 'mark_as_false_positive']
-
-# ================== REGISTER ADMIN MODEL ==================
-# Admin model akan di-register di admin_auth.py untuk dipindahkan ke auth section
-# admin.site.register(Admin, AdminModelAdmin)  # Commented out - dihandle di admin_auth.py
-
-# Tidak perlu custom index lagi karena sudah menggunakan proxy model di admin_auth.py

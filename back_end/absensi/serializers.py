@@ -19,7 +19,7 @@ class KaryawanSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Karyawan
-        fields = ['id', 'nama','perusahaan', 'email', 'divisi','foto_profil', 'jatah_cuti_per_tahun', 'sisa_cuti', 'username', 'password']
+        fields = ['id', 'nama','perusahaan', 'email', 'divisi', 'jabatan', 'foto_profil', 'jatah_cuti_per_tahun', 'sisa_cuti', 'username', 'password']
 
     def get_foto_profil(self, obj):
         if obj.foto_profil:

@@ -13,6 +13,7 @@ data class KaryawanData(
     val id: Int,
     val nama: String,
     val divisi: String?,
+    val jabatan: String?,
     val email: String?,
     @SerializedName("foto_profil")
     val fotoProfil: String?,

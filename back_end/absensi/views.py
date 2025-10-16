@@ -298,13 +298,23 @@ class AbsensiViewSet(viewsets.ViewSet):
         
         # FORCE GUNAKAN WAKTU SERVER 
         from datetime import time
-        checkout_time = time(16, 30)
+        
+        # Tentukan jam checkout berdasarkan jabatan
+        # Guru: 16:00, Direktur & Karyawan: 16:30
+        if absensi.karyawan.jabatan == 'guru':
+            checkout_time = time(16, 0)  # Guru pulang jam 16:00
+        else:
+            checkout_time = time(16, 30)  # Direktur & Karyawan pulang jam 16:30
+        
         status_keluar = 'Pulang Cepat' if server_jam_keluar < checkout_time else 'On Time'
 
         alasan_pulang_cepat = request.data.get('alasan_pulang_cepat', '')
 
         if status_keluar == 'Pulang Cepat' and not alasan_pulang_cepat:
-            return Response({"error": "Alasan pulang cepat wajib diisi jika Anda pulang sebelum jam 16:30."}, status=status.HTTP_400_BAD_REQUEST)
+            jam_checkout_str = checkout_time.strftime('%H:%M')
+            return Response({
+                "error": f"Alasan pulang cepat wajib diisi jika Anda pulang sebelum jam {jam_checkout_str}."
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Update data dengan waktu server
         data = request.data.copy()

@@ -23,6 +23,19 @@ JENIS_TIMEOFF = [
         ('Cuti', 'Cuti'),
         ('Izin', 'Izin'),
         ('Sakit', 'Sakit'),
+        ('Dinas', 'Dinas'),
+]
+
+JABATAN_CHOICES = [
+    ('direktur', 'Direktur'),
+    ('karyawan', 'Karyawan'),
+    ('guru', 'Guru'),
+]
+
+ROLE_CHOICES = [
+    ('superadmin', 'Super Admin'),
+    ('direktur', 'Direktur'),
+    ('hrd', 'HRD'),
 ]
 
 class Perusahaan(models.Model):
@@ -39,6 +52,110 @@ class Perusahaan(models.Model):
 
     def __str__(self):
         return self.nama
+
+# 👤 MODEL ADMIN
+class Admin(models.Model):
+    username = models.CharField(max_length=150, unique=True, help_text="Username untuk login ke Django Admin")
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, help_text="Role: direktur atau hrd")
+    perusahaan = models.ForeignKey(Perusahaan, on_delete=models.CASCADE, 
+                                   help_text="Perusahaan yang dikelola")
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, 
+                                related_name='admin_account',
+                                help_text="User Django yang terhubung (dibuat otomatis)")
+    is_active = models.BooleanField(default=True, help_text="Apakah admin ini aktif")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Admin"
+        verbose_name_plural = "Admins"
+        ordering = ['username']
+    
+    def __str__(self):
+        role_display = dict(ROLE_CHOICES).get(self.role, self.role)
+        return f"{self.username} - {role_display} ({self.perusahaan.nama})"
+    
+    def clean(self):
+        # Validasi: role harus direktur atau hrd saja
+        if self.role not in ['direktur', 'hrd']:
+            raise ValidationError('Admin hanya bisa memiliki role direktur atau hrd.')
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        
+        # Jika belum ada user Django, buat otomatis
+        if not self.user:
+            # Generate password default atau random
+            from django.contrib.auth.models import User, Permission
+            from django.contrib.contenttypes.models import ContentType
+            
+            # Cek apakah user dengan username ini sudah ada
+            if not User.objects.filter(username=self.username).exists():
+                # KEAMANAN: create_user() otomatis melakukan password hashing
+                # Password di-hash dengan PBKDF2_SHA256 sebelum disimpan ke database
+                user = User.objects.create_user(
+                    username=self.username,
+                    email=self.email,
+                    password='password123',  # ✅ Password ini akan di-hash, BUKAN plain text
+                    is_staff=True,
+                    is_active=self.is_active
+                )
+                self.user = user
+                
+                # Set permissions berdasarkan role
+                self._set_user_permissions()
+        else:
+            # Update user jika ada perubahan (tanpa mengubah password)
+            self.user.username = self.username
+            self.user.email = self.email
+            self.user.is_staff = True
+            self.user.is_active = self.is_active
+            self.user.save()
+            
+            # Update permissions jika role berubah
+            self._set_user_permissions()
+        
+        super().save(*args, **kwargs)
+    
+    def _set_user_permissions(self):
+        """Set permissions untuk user berdasarkan role"""
+        if not self.user:
+            return
+        
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        
+        # Clear existing permissions
+        self.user.user_permissions.clear()
+        
+        # Get content types untuk models yang relevan
+        # Import models di sini untuk menghindari circular import
+        from django.apps import apps
+        Karyawan = apps.get_model('absensi', 'Karyawan')
+        Absensi = apps.get_model('absensi', 'Absensi')
+        TimeOff = apps.get_model('absensi', 'TimeOff')
+        
+        karyawan_ct = ContentType.objects.get_for_model(Karyawan)
+        absensi_ct = ContentType.objects.get_for_model(Absensi)
+        timeoff_ct = ContentType.objects.get_for_model(TimeOff)
+        
+        # Permissions yang akan diberikan
+        permissions = []
+        
+        # Direktur dan HRD bisa view, add, change, delete untuk:
+        # - Karyawan, Absensi, TimeOff
+        for ct in [karyawan_ct, absensi_ct, timeoff_ct]:
+            permissions.extend(Permission.objects.filter(content_type=ct))
+        
+        # HRD juga bisa akses User
+        if self.role == 'hrd':
+            from django.contrib.auth.models import User as AuthUser
+            user_ct = ContentType.objects.get_for_model(AuthUser)
+            permissions.extend(Permission.objects.filter(content_type=user_ct))
+        
+        # Set permissions
+        self.user.user_permissions.set(permissions)
 
 class TimeOff(models.Model):
     karyawan = models.ForeignKey('Karyawan', on_delete=models.CASCADE, related_name='timeoff')
@@ -69,6 +186,7 @@ class Karyawan(models.Model):
         nama = models.CharField(max_length=255)
         perusahaan = models.ForeignKey(Perusahaan, on_delete=models.CASCADE, related_name='karyawan')
         divisi = models.CharField(max_length=255, null=True, blank=True)
+        jabatan = models.CharField(max_length=20, choices=JABATAN_CHOICES, default='karyawan')
         email = models.EmailField(unique=True)
         foto_profil = models.ImageField(upload_to='karyawan_photos/', null=True, blank=True)
         jatah_cuti_per_tahun = models.PositiveIntegerField(default=12)

@@ -107,7 +107,7 @@ fun TimeOffScreen(navController: NavController, homeViewModel: HomeViewModel = v
                             modifier = Modifier.menuAnchor().fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
-                            val dynamicJenisTimeOffList = listOf("Cuti", "Sakit", "Izin")
+                            val dynamicJenisTimeOffList = listOf("Cuti", "Sakit", "Izin", "Dinas")
 
                             dynamicJenisTimeOffList.forEach { jenis ->
                                 DropdownMenuItem(
