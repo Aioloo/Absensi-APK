@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-ALLOWED_HOSTS = ['192.168.108.113', '192.168.100.241', 'localhost', '192.168.100.241:8000', '*']
+ALLOWED_HOSTS = ['192.168.107.92', '172.20.10.6', 'localhost', '192.168.100.241:8000', '*']
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),

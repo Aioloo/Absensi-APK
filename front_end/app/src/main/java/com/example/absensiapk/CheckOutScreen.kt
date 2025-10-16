@@ -152,10 +152,7 @@ fun CheckOutScreen(
                             return@TakePhotoButton
                         }
 
-                        val attendanceId = homeViewModel.todayAttendance.value.id
-                        Log.d("ABSENSI_CHECKOUT", "Absensi ID dari SharedPreferences: $attendanceId")
-
-                        if (attendanceId != null && capturedImageUri != null && userLat != null && userLon != null) {
+                        if (capturedImageUri != null && userLat != null && userLon != null) {
                             homeViewModel.submitCheckOut(
                                 time = formattedTime,
                                 status = status,

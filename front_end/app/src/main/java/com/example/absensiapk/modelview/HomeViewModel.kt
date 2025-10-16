@@ -2,29 +2,36 @@
 
  import android.app.Application
  import android.content.Context
+ import android.graphics.Bitmap
+ import android.graphics.BitmapFactory
  import android.net.Uri
-    import android.util.Log
-    import androidx.core.content.edit
-    import androidx.lifecycle.AndroidViewModel
-    import androidx.lifecycle.ViewModel
-    import androidx.lifecycle.ViewModelProvider
-    import androidx.lifecycle.viewModelScope
-    import com.example.absensiapk.api.ApiService
-    import com.example.absensiapk.models.AbsenceCountData
-    import com.example.absensiapk.models.AttendanceData
-    import com.example.absensiapk.models.KaryawanData
+ import android.util.Log
+ import androidx.core.content.edit
+ import androidx.lifecycle.AndroidViewModel
+ import androidx.lifecycle.ViewModel
+ import androidx.lifecycle.ViewModelProvider
+ import androidx.lifecycle.viewModelScope
+ import com.example.absensiapk.api.ApiService
+ import com.example.absensiapk.models.AbsenceCountData
+ import com.example.absensiapk.models.AttendanceData
+ import com.example.absensiapk.models.KaryawanData
  import com.example.absensiapk.models.TimeOffData
  import kotlinx.coroutines.flow.MutableStateFlow
-    import kotlinx.coroutines.flow.StateFlow
-    import kotlinx.coroutines.launch
-    import okhttp3.MediaType.Companion.toMediaTypeOrNull
-    import okhttp3.MultipartBody
-    import okhttp3.RequestBody.Companion.asRequestBody
-    import okhttp3.RequestBody.Companion.toRequestBody
-    import java.io.File
-    import java.io.FileOutputStream
-    import java.time.LocalDate
-    import java.lang.Exception
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.launch
+ import okhttp3.MediaType.Companion.toMediaTypeOrNull
+ import okhttp3.MultipartBody
+ import okhttp3.RequestBody.Companion.asRequestBody
+ import okhttp3.RequestBody.Companion.toRequestBody
+ import java.io.ByteArrayOutputStream
+ import java.io.File
+ import java.io.FileOutputStream
+ import java.io.InputStream
+ import java.time.LocalDate
+ import java.lang.Exception
+
+ private const val MAX_UPLOAD_SIZE = 10 * 1024
+ private const val MAX_WIDTH = 640
 
  class HomeViewModel(private val apiService: ApiService, application: Application) : AndroidViewModel(application) {
      private val context: Context = application.applicationContext
@@ -224,17 +231,66 @@
             }
         }
 
-        private fun uriToFile(context: Context, uri: Uri): File {
-            val file = File(context.cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val outputStream = FileOutputStream(file)
-            inputStream?.use { input ->
-                outputStream.use { output ->
-                    input.copyTo(output)
-                }
-            }
-            return file
-        }
+     private fun uriToFile(context: Context, uri: Uri): File {
+         val file = File(context.cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
+
+         // 1. Baca Dimensi dan Downscale (Pengurangan dimensi)
+         val options = BitmapFactory.Options().apply {
+             inJustDecodeBounds = true
+             context.contentResolver.openInputStream(uri)?.use {
+                 BitmapFactory.decodeStream(it, null, this)
+             }
+         }
+
+         var scaleFactor = 1
+         if (options.outWidth > MAX_WIDTH) {
+             scaleFactor = options.outWidth / MAX_WIDTH
+         }
+
+         val finalOptions = BitmapFactory.Options().apply {
+             inSampleSize = scaleFactor
+         }
+
+         val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+         val originalBitmap = BitmapFactory.decodeStream(inputStream, null, finalOptions) ?: return file
+
+         // 2. Lakukan Kompresi Iteratif (Menurunkan Kualitas Agresif)
+         var quality = 80 // Mulai dari kualitas 80%
+         var currentFile = file
+
+         while (quality > 0) {
+             val outputStream = ByteArrayOutputStream()
+
+             // Kompresi dengan kualitas saat ini
+             originalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+
+             // Tulis byte terkompresi ke file
+             try {
+                 FileOutputStream(currentFile).use {
+                     it.write(outputStream.toByteArray())
+                 }
+             } catch (e: Exception) {
+                 Log.e("CompressionError", "Gagal menulis file terkompresi", e)
+                 break
+             }
+
+             val fileSize = currentFile.length()
+
+             if (fileSize <= MAX_UPLOAD_SIZE) {
+                 Log.d("COMPRESSION_DEBUG", "Kompresi Selesai: Ukuran mencapai target 10 KB.")
+                 break // Selesai jika sudah di bawah 10 KB
+             }
+
+             // Kurangi kualitas agresif (lompat 10 poin)
+             quality -= 10
+         }
+
+         // Bersihkan objek Bitmap
+         inputStream?.close()
+         originalBitmap.recycle()
+
+         return currentFile
+     }
 
         fun submitCheckIn(karyawanId: Int, time: String, status: String, lat: Double, lon: Double, photoUri: Uri, alasan: String="") {
             viewModelScope.launch {
@@ -257,7 +313,6 @@
                         val attendanceRecord = response.body()
                         val photoUrl = attendanceRecord?.fotoMasuk
                         _todayAttendance.value = _todayAttendance.value.copy(
-                            id = attendanceRecord?.id,
                             karyawanId = karyawanId,
                             jamMasuk = time,
                             statusMasuk = status,
@@ -267,12 +322,6 @@
                             alasanKeterlambatan = alasan
                         )
 
-                        val prefs = context.getSharedPreferences("absensi_prefs", Context.MODE_PRIVATE)
-                        prefs.edit{
-                            putString("last_checkin_date", LocalDate.now().toString())
-                            putInt("attendance_id", attendanceRecord?.id ?: 0)
-                            apply()
-                        }
                         Log.d("API_SUCCESS", "Check-in berhasil, ID: ${attendanceRecord?.id}")
                     }
                 } catch (e: Exception) {
@@ -283,12 +332,12 @@
 
         fun submitCheckOut(time: String, status: String, lat: Double, lon: Double, photoUri: Uri, alasan: String = "") {
             viewModelScope.launch {
-                val prefs = context.getSharedPreferences("absensi_prefs", Context.MODE_PRIVATE)
-                val attendanceId = prefs.getInt("attendance_id", 0)
-                Log.d("ABSENSI_CHECKOUT_VM", "Mencoba checkout untuk Absensi ID: $attendanceId")
+                val prefsAuth = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                val karyawanId = prefsAuth.getInt("karyawan_id", 0) // Ambil Karyawan ID untuk otorisasi
 
-                if (attendanceId == 0) {
-                    Log.e("HomeViewModel", "Tidak ada ID absensi untuk checkout.")
+                // Pengecekan dasar
+                if (karyawanId == 0) {
+                    Log.e("HomeViewModel", "Fatal: Karyawan ID tidak ditemukan. Tidak dapat checkout.")
                     return@launch
                 }
                 try {
@@ -298,7 +347,7 @@
                     Log.d("CHECKOUT_DEBUG", "Mencoba mengirim foto dengan nama: ${fotoPart.body.contentType()}")
 
                     val response = apiService.checkOut(
-                        id = attendanceId,
+                        karyawan = karyawanId.toString().toRequestBody(),
                         jamKeluar = time.toRequestBody(),
                         statusKeluar = status.toRequestBody(),
                         lokasiKeluarLat = lat.toString().toRequestBody(),

@@ -23,9 +23,9 @@ interface ApiService {
     ): Response<AttendanceData>
 
     @Multipart
-    @PATCH("api/absensi/{id}/checkout/")
+    @POST("api/absensi/checkout/")
     suspend fun checkOut(
-        @Path("id") id: Int,
+        @Part("karyawan") karyawan: RequestBody,
         @Part("jam_keluar") jamKeluar: RequestBody,
         @Part("status_keluar") statusKeluar: RequestBody,
         @Part fotoKeluar: MultipartBody.Part,

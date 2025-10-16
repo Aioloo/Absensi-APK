@@ -220,12 +220,14 @@ class AbsensiViewSet(viewsets.ViewSet):
         
         return Response(response_data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['patch'], parser_classes=[MultiPartParser, FormParser])
-    def checkout(self, request, pk=None):
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def checkout(self, request):
         from django.utils import timezone as django_timezone
-        
+
+        karyawan = Karyawan.objects.get(user=request.user)
+
         try:
-            absensi = Absensi.objects.get(pk=pk, karyawan__user=request.user)
+            absensi = Absensi.objects.get(karyawan=karyawan, tanggal=date.today())
         except Absensi.DoesNotExist:
             return Response({"detail": "Record absensi tidak ditemukan."}, status=status.HTTP_404_NOT_FOUND)
         
