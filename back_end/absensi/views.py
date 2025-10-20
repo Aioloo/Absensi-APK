@@ -13,6 +13,51 @@ from .serializers import (
 )
 from datetime import date, datetime, time, timezone
 from django.http import HttpResponse
+from math import radians, sin, cos, sqrt, atan2
+
+# 📍 KONSTANTA GEOLOCATION PT PAL
+PT_PAL_LAT = -7.2054751
+PT_PAL_LNG = 112.7415596
+PT_PAL_RADIUS_KM = 2.0  # Radius 2 km
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Menghitung jarak antara dua koordinat menggunakan Haversine formula
+    Return: jarak dalam kilometer
+    """
+    # Radius bumi dalam kilometer
+    R = 6371.0
+    
+    # Convert ke radians
+    lat1_rad = radians(float(lat1))
+    lon1_rad = radians(float(lon1))
+    lat2_rad = radians(float(lat2))
+    lon2_rad = radians(float(lon2))
+    
+    # Haversine formula
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    
+    distance = R * c
+    return distance
+
+def check_location_status(lat, lng):
+    """
+    Cek apakah koordinat berada di dalam area PT PAL (radius 2km)
+    Return: tuple (is_inside, distance_km, status_text)
+    """
+    distance = calculate_distance(lat, lng, PT_PAL_LAT, PT_PAL_LNG)
+    is_inside = distance <= PT_PAL_RADIUS_KM
+    
+    if is_inside:
+        status_text = "Di Dalam Area PT PAL"
+    else:
+        status_text = "Di Luar Area PT PAL"
+    
+    return is_inside, distance, status_text
 
 def home_view(request):
     return HttpResponse("Welcome to the Employee Attendance System")
@@ -199,11 +244,32 @@ class AbsensiViewSet(viewsets.ViewSet):
         checkin_limit = time(7, 30)
         status_absensi = 'On Time' if server_jam_masuk <= checkin_limit else 'Telat'
         
+        # 📍 CEK LOKASI ABSENSI
+        lokasi_lat = request.data.get('lokasi_masuk_lat')
+        lokasi_lng = request.data.get('lokasi_masuk_long')
+        status_lokasi = "Di Luar Area PT PAL"  # Default
+        location_warning = None
+        
+        if lokasi_lat and lokasi_lng:
+            try:
+                is_inside, distance_km, status_lokasi = check_location_status(lokasi_lat, lokasi_lng)
+                
+                if not is_inside:
+                    location_warning = {
+                        "message": "⚠️ Anda melakukan absensi di luar area PT PAL",
+                        "distance": f"{distance_km:.2f} km dari PT PAL",
+                        "status": status_lokasi
+                    }
+            except Exception as e:
+                # Jika ada error dalam perhitungan, tetap lanjutkan absensi
+                print(f"Error checking location: {e}")
+        
         # Siapkan data dengan waktu server
-        data = request.data
+        data = request.data.copy()
         data['karyawan'] = karyawan.id
         data['jam_masuk'] = server_jam_masuk
         data['status_masuk'] = status_absensi
+        data['status_lokasi'] = status_lokasi  # Tambahkan status lokasi
         data['tanggal'] = server_tanggal  # Force server date
 
         if status_absensi == 'Telat' and not data.get('alasan_keterlambatan'):
@@ -213,10 +279,14 @@ class AbsensiViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         absensi = serializer.save(karyawan=karyawan)
         
-        # Return response dengan waktu server
+        # Return response dengan waktu server dan warning lokasi
         response_data = serializer.data
         response_data['server_time'] = server_jam_masuk.strftime('%H:%M')
         response_data['security_note'] = 'Waktu diverifikasi dengan server untuk keamanan'
+        response_data['status_lokasi'] = status_lokasi
+        
+        if location_warning:
+            response_data['location_warning'] = location_warning
         
         return Response(response_data, status=status.HTTP_201_CREATED)
 

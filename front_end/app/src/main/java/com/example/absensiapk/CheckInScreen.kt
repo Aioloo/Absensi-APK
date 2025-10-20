@@ -51,6 +51,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -62,6 +64,7 @@ import com.example.absensiapk.models.AttendanceData
 import com.example.absensiapk.modelview.HomeViewModel
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun CheckInScreen(
@@ -75,6 +78,11 @@ fun CheckInScreen(
     var userLon by remember { mutableStateOf<Double?>(null) }
     var alasan by remember { mutableStateOf("") } // <-- State untuk alasan
     var isLate by remember { mutableStateOf(false)}
+    
+    // State untuk location warning
+    var showLocationWarningDialog by remember { mutableStateOf(false) }
+    var locationWarningMessage by remember { mutableStateOf("") }
+    var locationDistance by remember { mutableStateOf(0.0) }
 
     val tempUri = remember(context) {
         val file = File.createTempFile("image", ".jpg", context.externalCacheDir)
@@ -165,15 +173,24 @@ fun CheckInScreen(
 
                         if (karyawanId != 0 && capturedImageUri != null && userLat != null && userLon != null) {
                             homeViewModel.submitCheckIn(
-                                karyawanId =karyawanId,
+                                karyawanId = karyawanId,
                                 time = formattedTime,
                                 status = status,
                                 lat = userLat!!,
                                 lon = userLon!!,
                                 photoUri = capturedImageUri!!,
-                                alasan = alasan
+                                alasan = alasan,
+                                onLocationWarning = { message, distance ->
+                                    // Show dialog if location is outside PT PAL area
+                                    locationWarningMessage = message
+                                    locationDistance = distance
+                                    showLocationWarningDialog = true
+                                },
+                                onSuccess = {
+                                    // Navigate to home only if no warning
+                                    navController.navigate("home")
+                                }
                             )
-                            navController.navigate("home")
                         } else {
                             Toast.makeText(context, "Data tidak lengkap", Toast.LENGTH_SHORT).show()
                         }
@@ -190,6 +207,71 @@ fun CheckInScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+        
+        // Location Warning Dialog
+        if (showLocationWarningDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showLocationWarningDialog = false
+                    navController.navigate("home")
+                },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "⚠️ Peringatan Lokasi",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = locationWarningMessage,
+                            fontFamily = Poppins,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Jarak dari PT PAL: ${String.format("%.2f", locationDistance)} km",
+                            fontFamily = Poppins,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFFF5722)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Absensi Anda telah tersimpan dengan status 'Di Luar Area PT PAL' untuk keperluan monitoring.",
+                            fontFamily = Poppins,
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            lineHeight = 18.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLocationWarningDialog = false
+                            navController.navigate("home")
+                        }
+                    ) {
+                        Text(
+                            text = "Mengerti",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            color = BluePAL
+                        )
+                    }
+                }
+            )
         }
     }
 }

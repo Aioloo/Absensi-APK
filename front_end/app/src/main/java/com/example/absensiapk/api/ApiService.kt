@@ -20,7 +20,7 @@ interface ApiService {
         @Part("lokasi_masuk_lat") lokasiMasukLat: RequestBody,
         @Part("lokasi_masuk_long") lokasiMasukLong: RequestBody,
         @Part("alasan_keterlambatan") alasanKeterlambatan: RequestBody
-    ): Response<AttendanceData>
+    ): Response<CheckInResponse>
 
     @Multipart
     @POST("api/absensi/checkout/")

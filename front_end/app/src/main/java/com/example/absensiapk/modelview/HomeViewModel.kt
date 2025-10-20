@@ -63,6 +63,9 @@
      private val _sisaCuti = MutableStateFlow<Int?>(null)
      val sisaCuti: StateFlow<Int?> = _sisaCuti
 
+     // Location Warning State
+     private val _locationWarning = MutableStateFlow<Map<String, Any>?>(null)
+     val locationWarning: StateFlow<Map<String, Any>?> = _locationWarning
 
      private val _karyawanId = MutableStateFlow<Int?>(null)
 
@@ -292,7 +295,17 @@
          return currentFile
      }
 
-        fun submitCheckIn(karyawanId: Int, time: String, status: String, lat: Double, lon: Double, photoUri: Uri, alasan: String="") {
+        fun submitCheckIn(
+            karyawanId: Int, 
+            time: String, 
+            status: String, 
+            lat: Double, 
+            lon: Double, 
+            photoUri: Uri, 
+            alasan: String="",
+            onLocationWarning: ((String, Double) -> Unit)? = null,
+            onSuccess: (() -> Unit)? = null
+        ) {
             viewModelScope.launch {
                 try {
                     val tempFile = uriToFile(context, photoUri)
@@ -310,8 +323,10 @@
                     )
 
                     if (response.isSuccessful) {
-                        val attendanceRecord = response.body()
-                        val photoUrl = attendanceRecord?.fotoMasuk
+                        val checkInData = response.body()
+                        val photoUrl = checkInData?.fotoMasuk
+                        
+                        // Update attendance data
                         _todayAttendance.value = _todayAttendance.value.copy(
                             karyawanId = karyawanId,
                             jamMasuk = time,
@@ -322,7 +337,22 @@
                             alasanKeterlambatan = alasan
                         )
 
-                        Log.d("API_SUCCESS", "Check-in berhasil, ID: ${attendanceRecord?.id}")
+                        Log.d("API_SUCCESS", "Check-in berhasil, ID: ${checkInData?.id}")
+                        
+                        // Check for location warning AFTER saving data
+                        checkInData?.locationWarning?.let { warning ->
+                            _locationWarning.value = mapOf(
+                                "message" to warning.message,
+                                "distance_km" to warning.distanceKm,
+                                "status" to warning.status
+                            )
+                            onLocationWarning?.invoke(warning.message, warning.distanceKm)
+                        }
+                        
+                        // Always call success callback if no warning
+                        if (checkInData?.locationWarning == null) {
+                            onSuccess?.invoke()
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e("API_CRASH", "Kesalahan jaringan: ${e.message}")

@@ -520,7 +520,7 @@ class KaryawanAdmin(admin.ModelAdmin):
 class AbsensiAdmin(admin.ModelAdmin):
     list_display = (
         'karyawan', 'tanggal', 'jam_masuk', 'jam_keluar', 
-        'status_masuk', 'status_keluar', 'get_durasi_kerja',
+        'status_masuk', 'status_keluar', 'status_lokasi_display', 'get_durasi_kerja',
         'alasan_keterlambatan'
     )
     list_filter = (
@@ -530,6 +530,7 @@ class AbsensiAdmin(admin.ModelAdmin):
         'tanggal',             # Filter Tanggal (default Django)
         'status_masuk', 
         'status_keluar',
+        'status_lokasi',       # Filter Status Lokasi
         'karyawan__perusahaan',
         'karyawan__divisi'
     )
@@ -592,7 +593,7 @@ class AbsensiAdmin(admin.ModelAdmin):
             'fields': (('jam_masuk', 'jam_keluar'),)
         }),
         ('Status', {
-            'fields': (('status_masuk', 'status_keluar'),)
+            'fields': (('status_masuk', 'status_keluar'), 'status_lokasi')
         }),
         ('Lokasi GPS', {
             'fields': (
@@ -638,6 +639,18 @@ class AbsensiAdmin(admin.ModelAdmin):
     get_durasi_kerja.short_description = "Durasi Kerja"
     get_durasi_kerja.admin_order_field = 'jam_keluar'
     
+    def status_lokasi_display(self, obj):
+        """Display status lokasi dengan warna"""
+        if obj.status_lokasi:
+            if "Dalam Area" in obj.status_lokasi:
+                return mark_safe(f'<span style="color: green; font-weight: bold;">✓ {obj.status_lokasi}</span>')
+            else:
+                return mark_safe(f'<span style="color: orange; font-weight: bold;">⚠ {obj.status_lokasi}</span>')
+        return '-'
+    
+    status_lokasi_display.short_description = "Status Lokasi"
+    status_lokasi_display.admin_order_field = 'status_lokasi'
+    
     @admin.action(description="Export data absensi ke CSV")
     def export_to_csv(self, request, queryset):
         """Export filtered absensi data to CSV"""
@@ -662,7 +675,7 @@ class AbsensiAdmin(admin.ModelAdmin):
         writer.writerow([
             'No', 'Nama Karyawan', 'Perusahaan', 'Divisi', 'Tanggal', 
             'Jam Masuk', 'Status Masuk', 'Jam Keluar', 'Status Keluar', 
-            'Durasi Kerja', 'Lokasi Masuk', 'Lokasi Keluar'
+            'Status Lokasi', 'Durasi Kerja', 'Lokasi Masuk', 'Lokasi Keluar'
         ])
         
         for index, obj in enumerate(queryset.order_by('tanggal', 'karyawan__nama'), 1):
@@ -676,6 +689,7 @@ class AbsensiAdmin(admin.ModelAdmin):
                 obj.status_masuk or '-',
                 obj.jam_keluar.strftime('%H:%M') if obj.jam_keluar else '-',
                 obj.status_keluar or '-',
+                obj.status_lokasi or '-',
                 self.get_durasi_kerja(obj),
                 f"{obj.lokasi_masuk_lat}, {obj.lokasi_masuk_long}" if obj.lokasi_masuk_lat and obj.lokasi_masuk_long else '-',
                 f"{obj.lokasi_keluar_lat}, {obj.lokasi_keluar_long}" if obj.lokasi_keluar_lat and obj.lokasi_keluar_long else '-'
@@ -714,7 +728,7 @@ class AbsensiAdmin(admin.ModelAdmin):
         headers = [
             'No', 'Nama Karyawan', 'Perusahaan', 'Divisi', 'Tanggal', 
             'Jam Masuk', 'Status Masuk', 'Jam Keluar', 'Status Keluar', 
-            'Durasi Kerja', 'Lokasi Masuk', 'Lokasi Keluar'
+            'Status Lokasi', 'Durasi Kerja', 'Lokasi Masuk', 'Lokasi Keluar'
         ]
         
         # Add headers to worksheet
@@ -739,6 +753,7 @@ class AbsensiAdmin(admin.ModelAdmin):
                 obj.status_masuk or '-',
                 obj.jam_keluar.strftime('%H:%M') if obj.jam_keluar else '-',
                 obj.status_keluar or '-',
+                obj.status_lokasi or '-',
                 self.get_durasi_kerja(obj),
                 f"{obj.lokasi_masuk_lat}, {obj.lokasi_masuk_long}" if obj.lokasi_masuk_lat and obj.lokasi_masuk_long else '-',
                 f"{obj.lokasi_keluar_lat}, {obj.lokasi_keluar_long}" if obj.lokasi_keluar_lat and obj.lokasi_keluar_long else '-'
@@ -750,13 +765,13 @@ class AbsensiAdmin(admin.ModelAdmin):
                 cell.border = border
                 if col_num == 1:  # Nomor urut
                     cell.alignment = center_alignment
-                elif col_num in [5, 6, 8]:  # Tanggal dan jam
+                elif col_num in [5, 6, 8, 10]:  # Tanggal, jam, dan status lokasi
                     cell.alignment = center_alignment
             
             row_num += 1
         
         # Adjust column widths
-        column_widths = [5, 20, 15, 12, 12, 10, 12, 10, 12, 12, 15, 15]
+        column_widths = [5, 20, 15, 12, 12, 10, 12, 10, 12, 20, 12, 15, 15]
         for col_num, width in enumerate(column_widths, 1):
             ws.column_dimensions[get_column_letter(col_num)].width = width
         

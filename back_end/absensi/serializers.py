@@ -48,7 +48,7 @@ class AttendanceListSerializer(serializers.ModelSerializer):
             'jam_masuk', 'jam_keluar',
             'foto_masuk', 'foto_keluar', 
             'lokasi_masuk_lat', 'lokasi_masuk_long', 'lokasi_keluar_lat', 'lokasi_keluar_long',
-            'status_masuk', 'status_keluar']
+            'status_masuk', 'status_keluar', 'status_lokasi']
 
     def get_jam_masuk(self, obj):
         return obj.jam_masuk.strftime('%H:%M') if obj.jam_masuk else None
@@ -59,7 +59,7 @@ class AttendanceListSerializer(serializers.ModelSerializer):
 class AbsensiMasukSerializer(serializers.ModelSerializer):
     class Meta:
         model = Absensi
-        fields = ['id','karyawan', 'jam_masuk', 'foto_masuk', 'lokasi_masuk_lat', 'lokasi_masuk_long', 'status_masuk','alasan_keterlambatan']
+        fields = ['id','karyawan', 'jam_masuk', 'foto_masuk', 'lokasi_masuk_lat', 'lokasi_masuk_long', 'status_masuk', 'status_lokasi', 'alasan_keterlambatan']
 
     def get_jam_masuk(self, obj):
         return obj.jam_masuk.strftime("%H:%M") if obj.jam_masuk else None

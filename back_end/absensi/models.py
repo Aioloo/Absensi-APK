@@ -13,6 +13,11 @@ STATUS_OUT_CHOICES = [
         ('Pulang Cepat', 'Pulang Cepat'),
     ]
 
+STATUS_LOKASI_CHOICES = [
+    ('Di Dalam Area PT PAL', 'Di Dalam Area PT PAL'),
+    ('Di Luar Area PT PAL', 'Di Luar Area PT PAL'),
+]
+
 STATUS_TIMEOFF = [
       ('Pending', 'Pending'),
       ('Approved', 'Approved'),
@@ -227,6 +232,8 @@ class Absensi(models.Model):
         #status
         status_masuk = models.CharField(max_length=20, choices=STATUS_IN_CHOICES, blank=True, null=True)
         status_keluar = models.CharField(max_length=20, choices=STATUS_OUT_CHOICES, blank=True, null=True)
+        status_lokasi = models.CharField(max_length=50, choices=STATUS_LOKASI_CHOICES, blank=True, null=True, 
+                                         help_text="Status lokasi absensi (di dalam/luar area PT PAL)")
 
         def __str__(self):
             return f"Absensi {self.karyawan.nama} pada {self.tanggal}"
