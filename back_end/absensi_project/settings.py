@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'absensi.middleware.ContentSecurityPolicyMiddleware',  # CSP Security Header
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -163,3 +164,21 @@ SESSION_SAVE_EVERY_REQUEST = True  # Refresh session setiap request
 SESSION_COOKIE_SECURE = False  # Set True jika menggunakan HTTPS
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access ke session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
+
+# ============================================
+# CONTENT SECURITY POLICY (CSP) CONFIGURATION
+# ============================================
+# CSP diimplementasikan via middleware: absensi.middleware.ContentSecurityPolicyMiddleware
+# CSP melindungi dari XSS attacks dengan membatasi sumber content yang boleh diload
+# 
+# Path yang dilindungi CSP:
+# - /admin (semua subpath admin panel)
+# - /admin/login/
+# - /robots.txt
+# - /sitemap.xml
+#
+# Security headers tambahan yang diterapkan:
+# - X-Content-Type-Options: nosniff (prevent MIME sniffing attacks)
+# - X-Frame-Options: SAMEORIGIN (prevent clickjacking)
+# - X-XSS-Protection: 1; mode=block (enable browser XSS filter)
+# - Referrer-Policy: strict-origin-when-cross-origin (control referrer information)
