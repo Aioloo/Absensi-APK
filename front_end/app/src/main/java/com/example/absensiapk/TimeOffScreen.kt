@@ -79,7 +79,7 @@ fun TimeOffScreen(navController: NavController, homeViewModel: HomeViewModel = v
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Time Off Form",
+                        text = "Form Time Off",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         modifier = Modifier.padding(bottom = 10.dp),

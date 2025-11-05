@@ -107,7 +107,7 @@ fun EmployeeListTopBar(navController: NavController){
                 .clickable{ navController.popBackStack() }
         )
         Text(
-            text = "Employee's List",
+            text = "List Karyawan",
             fontFamily = Poppins,
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,

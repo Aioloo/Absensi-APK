@@ -54,6 +54,7 @@ import com.example.absensiapk.models.AttendanceData
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.util.Locale
 
 
 @Composable
@@ -102,7 +103,7 @@ fun AttendanceListTopBar(navController: NavController){
                 .clickable{ navController.popBackStack() }
         )
         Text(
-            text = "Attendance List",
+            text = "List Absensi",
             fontFamily = Poppins,
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
@@ -117,10 +118,11 @@ fun AttendanceListTopBar(navController: NavController){
 
 @Composable
 fun AttendanceListCard(record: AttendanceData) {
+    val localeIndonesia = Locale("in", "ID")
     val formattedDate = record.tanggal?.let{
         try {
             val date = LocalDate.parse(it)
-            date.format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy"))
+            date.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy", localeIndonesia))
         } catch (e: DateTimeParseException) {
             it
         }

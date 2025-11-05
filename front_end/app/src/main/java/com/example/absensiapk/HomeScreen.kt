@@ -78,6 +78,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import java.util.Locale
 
 
 private val tickerFlow: Flow<LocalTime> = flow {
@@ -160,7 +161,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ){
-                            Text("Logout",
+                            Text("Keluar",
                                 fontFamily = Poppins,
                                 color = Color.White,
                                 fontSize = 14.sp,
@@ -293,7 +294,7 @@ fun HeaderSection(navController: NavController, currentTime: LocalTime, karyawan
         ) {
             Column {
                 Text(
-                    text = "Good Morning",
+                    text = "Hallo !!",
                     fontFamily = Poppins,
                     fontWeight = FontWeight.Normal,
                     fontSize = 16.sp,
@@ -442,8 +443,9 @@ fun AbsenceCountSection(counts: AbsenceCountData?) {
         ) {
             Row(
                 Modifier
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+                    .padding(horizontal = 40.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
                     modifier = Modifier
@@ -497,8 +499,9 @@ fun AbsenceCountSection(counts: AbsenceCountData?) {
 
 @Composable
 fun TodayAttendanceSection(homeViewModel: HomeViewModel = viewModel()) {
+    val localeIndonesia = Locale("in", "ID")
     val todayAttendance by homeViewModel.todayAttendance.collectAsState()
-    val todayDate = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy"))
+    val todayDate = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy", localeIndonesia))
 
     Card(
         modifier = Modifier
@@ -510,7 +513,7 @@ fun TodayAttendanceSection(homeViewModel: HomeViewModel = viewModel()) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Today's Attendance",
+                text = "Absensi Hari Ini",
                 fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
@@ -660,19 +663,19 @@ fun TombolBawah(navController: NavController) {
         ) {
             BottomNavItem(
                 icon = R.drawable.clock,
-                label = "Attendance List",
+                label = "List Absensi",
                 iconColor = BluePAL,
                 onClick = { navController.navigate("attendance_list") }
             )
             BottomNavItem(
                 icon = R.drawable.person,
-                label = "Employee's List",
+                label = "List Karyawan",
                 iconColor = Color.Green,
                 onClick = { navController.navigate("employee_list") }
             )
             BottomNavItem(
                 icon = R.drawable.timeofflist,
-                label = "Time Off List",
+                label = "List Time Off",
                 iconColor = Orange,
                 onClick = { navController.navigate("time_off_list") }
             )
