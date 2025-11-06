@@ -1,7 +1,12 @@
 """
 Security Middleware untuk Absensi Project
-Menambahkan Content Security Policy (CSP) headers untuk keamanan
+- Content Security Policy (CSP) headers untuk keamanan
+- Force Password Change untuk TOTP authentication
 """
+
+from django.shortcuts import redirect
+from django.urls import reverse
+
 
 class ContentSecurityPolicyMiddleware:
     """
@@ -56,3 +61,71 @@ class ContentSecurityPolicyMiddleware:
             response['Referrer-Policy'] = 'strict-origin-when-cross-origin'  # Control referrer info
         
         return response
+
+
+class ForcePasswordChangeMiddleware:
+    """
+    Middleware untuk memaksa user mengganti password setelah:
+    1. First login (default password)
+    2. Forgot password (reset by superadmin)
+    3. Reset both (password + TOTP reset by superadmin)
+    """
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        # Path yang dikecualikan dari redirect
+        excluded_paths = [
+            reverse('admin:password_change'),
+            reverse('admin:password_change_done'),
+            reverse('admin:logout'),
+            '/admin/jsi18n/',  # Django i18n JavaScript catalog
+            '/totp/setup/',
+            '/totp/verify/',
+            '/totp/qr-code/',
+            '/totp/verify-setup/',
+            '/totp/backup-codes/',
+            '/totp/backup-codes-acknowledge/',
+            '/totp/check-setup/',
+        ]
+        
+        # Jangan redirect jika user belum login atau di excluded paths
+        if not request.user.is_authenticated:
+            return self.get_response(request)
+        
+        if request.path in excluded_paths:
+            return self.get_response(request)
+        
+        # PENTING: Skip middleware untuk superadmin
+        # Superadmin tidak perlu TOTP dan bisa akses admin panel bebas
+        if request.user.is_superuser:
+            return self.get_response(request)
+        
+        # Check apakah user adalah Admin (HRD/Direktur) dengan force_password_change=True
+        try:
+            if hasattr(request.user, 'admin_account'):
+                admin = request.user.admin_account
+                
+                # Priority 1: Force password change
+                if admin.force_password_change:
+                    # Redirect ke password change page
+                    return redirect('admin:password_change')
+                
+                # Priority 2: TOTP verification (jika sudah setup tapi belum verified di session)
+                # Jika TOTP sudah enabled tapi belum verified di session ini
+                if admin.totp_enabled and not request.user.is_verified():
+                    # Redirect ke TOTP verification
+                    return redirect('totp_verify')
+                
+                # Priority 3: TOTP setup (jika belum di-setup sama sekali)
+                # Jika TOTP belum di-setup (totp_enabled=False)
+                if not admin.totp_enabled:
+                    # Redirect ke TOTP setup
+                    return redirect('totp_check_setup')
+        except Exception as e:
+            # Jika terjadi error, lanjutkan normal (untuk keamanan)
+            # Log error jika perlu
+            pass
+        
+        return self.get_response(request)

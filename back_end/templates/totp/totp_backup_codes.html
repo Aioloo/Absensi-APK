@@ -1,0 +1,225 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Backup Codes - {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+<style>
+    .backup-codes-container {
+        max-width: 700px;
+        margin: 50px auto;
+        padding: 40px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .backup-codes-container h2 {
+        color: #417690;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .success-icon {
+        text-align: center;
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 5px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .warning-box h3 {
+        color: #856404;
+        margin-top: 0;
+    }
+    .warning-box ul {
+        margin-left: 20px;
+        color: #856404;
+    }
+    .codes-box {
+        background: #f8f9fa;
+        border: 2px solid #417690;
+        border-radius: 5px;
+        padding: 30px;
+        margin: 30px 0;
+    }
+    .codes-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .code-item {
+        background: white;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: 2px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+    .btn {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #417690;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2d5468;
+    }
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    .print-note {
+        text-align: center;
+        color: #666;
+        font-size: 14px;
+        margin-top: 20px;
+        font-style: italic;
+    }
+    @media print {
+        .action-buttons, .print-note {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backup-codes-container">
+    <div class="success-icon">✅</div>
+    <h2>TOTP Setup Berhasil!</h2>
+    
+    <div class="warning-box">
+        <h3>⚠️ SANGAT PENTING: Simpan Backup Codes Ini!</h3>
+        <ul>
+            <li><strong>Backup codes TIDAK disimpan di database</strong> - Untuk keamanan maksimal</li>
+            <li><strong>Backup codes hanya ditampilkan SEKALI</strong> - Halaman ini tidak akan muncul lagi</li>
+            <li><strong>Superadmin TIDAK BISA melihat</strong> backup codes Anda</li>
+            <li><strong>Jika kehilangan phone DAN backup codes:</strong> Hanya bisa reset TOTP oleh superadmin</li>
+            <li>Simpan di tempat yang <strong>aman dan rahasia</strong> (password manager, safe, dll)</li>
+        </ul>
+    </div>
+    
+    <div class="codes-box">
+        <h3 style="text-align: center; margin-top: 0;">Backup Codes Anda:</h3>
+        <div class="codes-grid">
+            {% for code in backup_codes %}
+                <div class="code-item">{{ code }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <button class="btn btn-secondary" onclick="window.print()">
+            🖨️ Print Backup Codes
+        </button>
+        <button class="btn btn-secondary" onclick="copyToClipboard()">
+            📋 Copy to Clipboard
+        </button>
+        <form method="post" action="{% url 'totp_backup_codes_acknowledge' %}" style="flex: 1;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                ✓ Saya Sudah Menyimpan Backup Codes
+            </button>
+        </form>
+    </div>
+    
+    <div class="print-note">
+        💡 Tips: Screenshot halaman ini atau print untuk disimpan di tempat aman
+    </div>
+</div>
+
+<script>
+    function copyToClipboard() {
+        // Build codes array manually to avoid Django template issues in JavaScript
+        const codeElements = document.querySelectorAll('.code-item');
+        const codes = [];
+        codeElements.forEach(function(element) {
+            codes.push(element.textContent.trim());
+        });
+        
+        const codesText = codes.join('\n');
+        
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(codesText).then(function() {
+                alert('✓ Backup codes berhasil dicopy ke clipboard!\n\n' + codesText);
+            }).catch(function(err) {
+                console.error('Clipboard API failed:', err);
+                fallbackCopyToClipboard(codesText);
+            });
+        } else {
+            // Fallback for older browsers or non-HTTPS
+            fallbackCopyToClipboard(codesText);
+        }
+    }
+    
+    function fallbackCopyToClipboard(text) {
+        // Create temporary textarea
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.width = '1px';
+        textarea.style.height = '1px';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        
+        // Select and copy
+        textarea.select();
+        textarea.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert('✓ Backup codes berhasil dicopy ke clipboard!\n\n' + text);
+            } else {
+                alert('❌ Gagal copy ke clipboard. Silakan copy manual:\n\n' + text);
+            }
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('❌ Gagal copy ke clipboard. Silakan copy manual:\n\n' + text);
+        }
+        
+        document.body.removeChild(textarea);
+    }
+    
+    // Warning sebelum user meninggalkan halaman
+    let formSubmitted = false;
+    
+    document.querySelector('form[action*="backup-codes-acknowledge"]').addEventListener('submit', function() {
+        formSubmitted = true;
+    });
+    
+    window.addEventListener('beforeunload', function (e) {
+        // Jika form belum di-submit
+        if (!formSubmitted) {
+            e.preventDefault();
+            e.returnValue = 'Apakah Anda sudah menyimpan backup codes? Backup codes tidak akan ditampilkan lagi!';
+            return e.returnValue;
+        }
+    });
+</script>
+{% endblock %}

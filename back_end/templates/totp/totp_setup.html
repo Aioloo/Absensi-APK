@@ -1,0 +1,151 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}TOTP Setup - {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+<style>
+    .totp-setup-container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .totp-setup-container h2 {
+        color: #417690;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .qr-code-container {
+        text-align: center;
+        margin: 30px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    .qr-code-container img {
+        max-width: 300px;
+        border: 2px solid #417690;
+        border-radius: 5px;
+    }
+    .instructions {
+        background: #e7f3f8;
+        padding: 20px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .instructions ol {
+        margin-left: 20px;
+    }
+    .instructions li {
+        margin: 10px 0;
+    }
+    .verify-form {
+        margin-top: 30px;
+    }
+    .verify-form input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        font-size: 18px;
+        letter-spacing: 5px;
+        text-align: center;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+    .verify-form button {
+        width: 100%;
+        padding: 12px;
+        background: #417690;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    .verify-form button:hover {
+        background: #2d5468;
+    }
+    .alert {
+        padding: 12px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="totp-setup-container">
+    <h2>🔐 Setup Two-Factor Authentication (TOTP)</h2>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="instructions">
+        <h3>Instruksi Setup:</h3>
+        <ol>
+            <li><strong>Install Authenticator App</strong> di smartphone Anda:
+                <ul>
+                    <li>Google Authenticator (Android/iOS)</li>
+                    <li>Microsoft Authenticator (Android/iOS)</li>
+                    <li>Authy (Android/iOS)</li>
+                </ul>
+            </li>
+            <li><strong>Scan QR Code</strong> di bawah ini menggunakan authenticator app</li>
+            <li><strong>Masukkan kode 6 digit</strong> yang muncul di app untuk verifikasi</li>
+            <li><strong>Simpan backup codes</strong> yang akan diberikan setelah setup berhasil</li>
+        </ol>
+    </div>
+    
+    <div class="qr-code-container">
+        <h3>Scan QR Code ini:</h3>
+        <img src="{% url 'totp_qr_code' %}" alt="TOTP QR Code">
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+            Atau masukkan kode manual: <strong>{{ device.key }}</strong>
+        </p>
+        <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; font-size: 13px;">
+            <strong>⚠️ Penting:</strong> QR code ini unik untuk akun Anda. 
+            <strong>Jangan scan berkali-kali!</strong> 
+            Jika sudah di-scan, langsung masukkan kode 6 digit di bawah untuk verifikasi.
+        </div>
+    </div>
+    
+    <div class="verify-form">
+        <form method="post" action="{% url 'totp_verify_setup' %}">
+            {% csrf_token %}
+            <label for="token" style="display: block; margin-bottom: 10px; font-weight: bold;">
+                Masukkan kode 6 digit dari Authenticator App:
+            </label>
+            <input 
+                type="text" 
+                id="token" 
+                name="token" 
+                maxlength="6" 
+                pattern="[0-9]{6}" 
+                placeholder="000000"
+                required
+                autofocus
+            >
+            <button type="submit">Verify & Complete Setup</button>
+        </form>
+    </div>
+    
+    <div class="alert alert-info" style="margin-top: 20px;">
+        <strong>⚠️ Penting:</strong> Setelah setup berhasil, Anda akan menerima backup codes. 
+        Simpan backup codes tersebut di tempat yang aman. Backup codes dapat digunakan jika 
+        Anda kehilangan akses ke authenticator app.
+    </div>
+</div>
+{% endblock %}

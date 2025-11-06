@@ -49,7 +49,12 @@ INSTALLED_APPS = [
     'corsheaders',
     'absensi',
     'rest_framework',
-    'rest_framework_simplejwt'
+    'rest_framework_simplejwt',
+    # Two-Factor Authentication (TOTP)
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    'two_factor',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +65,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # TOTP Middleware
+    'absensi.middleware.ForcePasswordChangeMiddleware',  # Force Password Change for TOTP
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -107,13 +114,13 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'absensi.validators.CustomPasswordValidator',  # Custom validator for TOTP requirements
     },
 ]
 
@@ -182,3 +189,29 @@ SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
 # - X-Frame-Options: SAMEORIGIN (prevent clickjacking)
 # - X-XSS-Protection: 1; mode=block (enable browser XSS filter)
 # - Referrer-Policy: strict-origin-when-cross-origin (control referrer information)
+
+# ============================================
+# TOTP (TWO-FACTOR AUTHENTICATION) CONFIGURATION
+# ============================================
+# TOTP digunakan untuk HRD dan Direktur roles
+# Flow:
+# 1. First login: username + default password → force password change → TOTP setup (scan QR)
+# 2. Forgot TOTP: superadmin reset → login → scan QR again (no password change)
+# 3. Forgot password: superadmin reset → default password → login → force password change → enter TOTP code
+# 4. Reset both: full first login flow again
+#
+# Password requirements:
+# - Minimum 9 characters
+# - 1 uppercase letter
+# - 1 lowercase letter
+# - 1 symbol
+# - No spaces allowed
+
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/admin/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
+
+# django-two-factor-auth settings
+TWO_FACTOR_PATCH_ADMIN = False  # We'll customize admin ourselves
+TWO_FACTOR_CALL_GATEWAY = None
+TWO_FACTOR_SMS_GATEWAY = None

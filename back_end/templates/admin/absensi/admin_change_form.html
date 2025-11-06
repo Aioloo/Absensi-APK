@@ -1,0 +1,64 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block after_field_sets %}
+{{ block.super }}
+
+{% if original %}
+<div class="submit-row" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+    <h3 style="margin-top: 0; color: #417690;">TOTP & Password Management</h3>
+    <p style="color: #666; margin-bottom: 15px;">
+        <strong>TOTP Status:</strong> 
+        {% if original.totp_enabled %}
+            <span style="color: green; font-weight: bold;">✓ Enabled</span>
+        {% else %}
+            <span style="color: red; font-weight: bold;">✗ Not Setup</span>
+        {% endif %}
+        <br>
+        <strong>Force Password Change:</strong> 
+        {% if original.force_password_change %}
+            <span style="color: orange; font-weight: bold;">⚠ Yes (akan dipaksa ganti password)</span>
+        {% else %}
+            <span style="color: green; font-weight: bold;">✓ No</span>
+        {% endif %}
+    </p>
+    
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'admin:absensi_admin_reset_password' original.id %}" 
+           class="button" 
+           style="background: #ffc107; color: #000; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;"
+           onclick="return confirm('Reset password untuk {{ original.username }}?\n\nPassword akan di-set ke: password123\nUser akan dipaksa ganti password saat login.');">
+            Reset Password to Default
+        </a>
+        
+        <a href="{% url 'admin:absensi_admin_reset_totp' original.id %}" 
+           class="button" 
+           style="background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;"
+           onclick="return confirm('Reset TOTP untuk {{ original.username }}?\n\nTOTP devices akan dihapus.\nUser harus setup TOTP ulang saat login.');">
+            Reset TOTP
+        </a>
+    </div>
+    
+    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 3px;">
+        <strong>Note:</strong>
+        <ul style="margin: 5px 0 0 20px; font-size: 13px;">
+            <li><strong>Reset Password:</strong> User akan dipaksa ganti password saat login berikutnya (force_password_change=True)</li>
+            <li><strong>Reset TOTP:</strong> TOTP devices akan dihapus, user harus scan QR code baru</li>
+            <li><strong>Default Password:</strong> password123</li>
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .submit-row .button:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+        transition: all 0.2s;
+    }
+</style>
+{% endblock %}

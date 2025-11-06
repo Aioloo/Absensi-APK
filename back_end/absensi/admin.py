@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.http import HttpResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.shortcuts import redirect
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -90,9 +90,64 @@ class AdminForm(forms.ModelForm):
 
 class AdminModelAdmin(admin.ModelAdmin):
     form = AdminForm
-    list_display = ('username', 'email', 'role', 'perusahaan', 'is_active', 'created_at')
-    list_filter = ('role', 'perusahaan', 'is_active')
+    list_display = ('username', 'email', 'role', 'perusahaan', 'is_active', 'totp_status_display', 'created_at')
+    list_filter = ('role', 'perusahaan', 'is_active', 'totp_enabled')
     search_fields = ('username', 'email', 'perusahaan__nama')
+    actions = ['reset_password_action', 'reset_totp_action', 'reset_both_action']
+    change_form_template = 'admin/absensi/admin_change_form.html'
+    
+    def totp_status_display(self, obj):
+        """Display TOTP status dengan warna"""
+        if obj.totp_enabled:
+            return mark_safe('<span style="color: green; font-weight: bold;">✓ TOTP Enabled</span>')
+        else:
+            return mark_safe('<span style="color: red; font-weight: bold;">✗ TOTP Not Setup</span>')
+    totp_status_display.short_description = 'TOTP Status'
+    
+    def reset_password_action(self, request, queryset):
+        """Admin action: Reset password ke default (password123)"""
+        count = 0
+        for admin_obj in queryset:
+            admin_obj.reset_password_to_default()
+            count += 1
+        
+        self.message_user(
+            request,
+            f'{count} admin password telah di-reset ke default (password123). '
+            f'Admin akan dipaksa ganti password saat login berikutnya.',
+            level='success'
+        )
+    reset_password_action.short_description = "Reset Password to Default (password123)"
+    
+    def reset_totp_action(self, request, queryset):
+        """Admin action: Reset TOTP devices"""
+        count = 0
+        for admin_obj in queryset:
+            admin_obj.reset_totp()
+            count += 1
+        
+        self.message_user(
+            request,
+            f'{count} admin TOTP telah di-reset. Admin harus setup TOTP ulang saat login berikutnya.',
+            level='success'
+        )
+    reset_totp_action.short_description = "Reset TOTP (Forgot TOTP)"
+    
+    def reset_both_action(self, request, queryset):
+        """Admin action: Reset both password and TOTP"""
+        count = 0
+        for admin_obj in queryset:
+            admin_obj.reset_password_to_default()
+            admin_obj.reset_totp()
+            count += 1
+        
+        self.message_user(
+            request,
+            f'{count} admin password dan TOTP telah di-reset. '
+            f'Admin akan melalui full setup flow saat login berikutnya.',
+            level='success'
+        )
+    reset_both_action.short_description = "Reset Both (Password + TOTP)"
     
     def get_fields(self, request, obj=None):
         """Dynamic fields - tampilkan password hanya saat add atau edit"""
@@ -122,6 +177,47 @@ class AdminModelAdmin(admin.ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
+    
+    def get_urls(self):
+        """Add custom URLs for reset password and TOTP buttons"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('<int:admin_id>/reset-password/', 
+                 self.admin_site.admin_view(self.reset_password_view),
+                 name='absensi_admin_reset_password'),
+            path('<int:admin_id>/reset-totp/', 
+                 self.admin_site.admin_view(self.reset_totp_view),
+                 name='absensi_admin_reset_totp'),
+        ]
+        return custom_urls + urls
+    
+    def reset_password_view(self, request, admin_id):
+        """View untuk reset password via button"""
+        admin_obj = self.get_object(request, admin_id)
+        if admin_obj:
+            admin_obj.reset_password_to_default()
+            self.message_user(
+                request,
+                f'Password untuk {admin_obj.username} telah di-reset ke default (password123). '
+                f'Admin akan dipaksa ganti password saat login berikutnya.',
+                level='success'
+            )
+        # Redirect kembali ke halaman sebelumnya (referer)
+        return redirect(request.META.get('HTTP_REFERER', '/admin/'))
+    
+    def reset_totp_view(self, request, admin_id):
+        """View untuk reset TOTP via button"""
+        admin_obj = self.get_object(request, admin_id)
+        if admin_obj:
+            admin_obj.reset_totp()
+            self.message_user(
+                request,
+                f'TOTP untuk {admin_obj.username} telah di-reset. '
+                f'Admin harus setup TOTP ulang saat login berikutnya.',
+                level='success'
+            )
+        # Redirect kembali ke halaman sebelumnya (referer)
+        return redirect(request.META.get('HTTP_REFERER', '/admin/'))
     
     def save_model(self, request, obj, form, change):
         """Override untuk handle password dan memberikan pesan"""
@@ -1041,8 +1137,9 @@ class SecurityAuditLogAdmin(admin.ModelAdmin):
     
     actions = ['mark_as_reviewed', 'mark_as_false_positive']
 
-# ================== REGISTER ADMIN MODEL ==================
-# Admin model akan di-register di admin_auth.py untuk dipindahkan ke auth section
-# admin.site.register(Admin, AdminModelAdmin)  # Commented out - dihandle di admin_auth.py
 
-# Tidak perlu custom index lagi karena sudah menggunakan proxy model di admin_auth.py
+# ================== CUSTOMIZE ADMIN SITE ==================
+# Customize Django Admin site header, title, and index title
+admin.site.site_header = 'Absensi Administration'
+admin.site.site_title = 'Absensi Admin Portal'
+admin.site.index_title = 'Welcome to Absensi Administration'

@@ -1,0 +1,6 @@
+
+# ================== CUSTOMIZE ADMIN SITE ==================
+# Customize Django Admin site header, title, and index title
+admin.site.site_header = 'Absensi Administration'
+admin.site.site_title = 'Absensi Admin Portal'
+admin.site.index_title = 'Welcome to Absensi Administration'

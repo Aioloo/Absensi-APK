@@ -69,6 +69,11 @@ class Admin(models.Model):
                                 related_name='admin_account',
                                 help_text="User Django yang terhubung (dibuat otomatis)")
     is_active = models.BooleanField(default=True, help_text="Apakah admin ini aktif")
+    
+    # TOTP fields
+    force_password_change = models.BooleanField(default=True, help_text="User harus ganti password saat login pertama atau setelah reset")
+    totp_enabled = models.BooleanField(default=False, help_text="TOTP sudah di-setup atau belum")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -122,6 +127,30 @@ class Admin(models.Model):
             self._set_user_permissions()
         
         super().save(*args, **kwargs)
+    
+    def reset_password_to_default(self):
+        """
+        Reset password ke default 'password123' dan set force_password_change=True
+        Digunakan oleh superadmin saat forgot password atau reset both
+        """
+        if self.user:
+            self.user.set_password('password123')
+            self.user.save()
+            self.force_password_change = True
+            self.save(update_fields=['force_password_change'])
+    
+    def reset_totp(self):
+        """
+        Reset TOTP dengan menghapus devices dan set totp_enabled=False
+        Digunakan oleh superadmin saat forgot TOTP atau reset both
+        """
+        if self.user:
+            # Delete all TOTP devices for this user
+            from django_otp.plugins.otp_totp.models import TOTPDevice
+            TOTPDevice.objects.filter(user=self.user).delete()
+            
+            self.totp_enabled = False
+            self.save(update_fields=['totp_enabled'])
     
     def _set_user_permissions(self):
         """Set permissions untuk user berdasarkan role"""
