@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-ALLOWED_HOSTS = ['192.168.107.92', '172.20.10.6', 'localhost', '192.168.68.100:8000', '*']
+ALLOWED_HOSTS = ['192.168.70.101:8081', '172.20.10.6', 'localhost', '192.168.70.101', '*']
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -99,7 +99,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'absensi_db',
         'USER': 'postgres',
-        'PASSWORD': '12345',
+        'PASSWORD': 'ingmar107',
         'HOST': 'localhost',
         'PORT': '5432',
     }

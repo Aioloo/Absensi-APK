@@ -79,7 +79,7 @@ fun LoginPageContent(onLoginSuccess: (Int) -> Unit, loginViewModel: LoginViewMod
                     color = BluePAL
                 )
                 Text(
-                    text = "Let's Sign In First :)",
+                    text = "Silahkan Login Terlebih Dahulu",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = Poppins,
