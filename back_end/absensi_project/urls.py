@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
 from absensi.views import LoginView, home_view
 from absensi.totp_views import (
     CustomPasswordChangeView,
@@ -19,7 +20,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/', include('absensi.urls')),
-    path('', home_view, name='home'),
+    path('', lambda request: redirect('/admin/'), name='home'),
     
     # TOTP URLs
     path('totp/check-setup/', totp_check_setup, name='totp_check_setup'),

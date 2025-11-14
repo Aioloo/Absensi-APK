@@ -99,7 +99,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'absensi_db',
         'USER': 'postgres',
-        'PASSWORD': 'ingmar107',
+        'PASSWORD': '12345',
         'HOST': 'localhost',
         'PORT': '5432',
     }

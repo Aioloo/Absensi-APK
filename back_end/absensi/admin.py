@@ -14,8 +14,14 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from .models import Karyawan, Absensi, TimeOff, Perusahaan, SecurityAuditLog, Admin
 
-# Unregister Groups model karena tidak digunakan
+# Unregister Groups dan User model karena tidak digunakan di admin panel
 admin.site.unregister(Group)
+
+# Unregister User model dengan try-except untuk avoid error jika belum terdaftar
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
 # ================== HELPER FUNCTIONS FOR ROLE-BASED ACCESS ==================
 def get_admin_role(user):
@@ -248,62 +254,65 @@ class AdminModelAdmin(admin.ModelAdmin):
                 f"Silakan beritahu admin untuk mengganti password setelah login pertama kali.",
                 level='warning')
 
-# ================== CUSTOM USER ADMIN FOR HRD ACCESS ==================
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+# ================== CUSTOM USER ADMIN - DISABLED ==================
+# User model disembunyikan dari admin panel untuk keamanan
+# Jika diperlukan akses ke User, gunakan model Admin (Absensi)
 
-# Unregister default User admin
-admin.site.unregister(User)
+# from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-@admin.register(User)
-class CustomUserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active')
-    
-    def has_module_permission(self, request):
-        """Hanya superadmin dan HRD yang bisa akses module Users"""
-        if request.user.is_superuser:
-            return True
-        
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_view_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_add_permission(self, request):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_change_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        role = get_admin_role(request.user)
-        return role == 'hrd'
-    
-    def has_delete_permission(self, request, obj=None):
-        # Hanya superadmin yang bisa delete user
-        return request.user.is_superuser
-    
-    def get_queryset(self, request):
-        """Filter users berdasarkan perusahaan untuk HRD"""
-        qs = super().get_queryset(request)
-        
-        if request.user.is_superuser:
-            return qs
-        
-        role = get_admin_role(request.user)
-        perusahaan = get_admin_perusahaan(request.user)
-        
-        if role == 'hrd' and perusahaan:
-            # HRD hanya bisa lihat user yang terkait dengan karyawan di perusahaan mereka
-            karyawan_ids = Karyawan.objects.filter(perusahaan=perusahaan).values_list('user_id', flat=True)
-            return qs.filter(id__in=karyawan_ids)
-        
-        return qs.none()
+# # Unregister default User admin
+# # admin.site.unregister(User)
+
+# @admin.register(User)
+# class CustomUserAdmin(BaseUserAdmin):
+#     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active')
+#     
+#     def has_module_permission(self, request):
+#         """Hanya superadmin dan HRD yang bisa akses module Users"""
+#         if request.user.is_superuser:
+#             return True
+#         
+#         role = get_admin_role(request.user)
+#         return role == 'hrd'
+#     
+#     def has_view_permission(self, request, obj=None):
+#         if request.user.is_superuser:
+#             return True
+#         role = get_admin_role(request.user)
+#         return role == 'hrd'
+#     
+#     def has_add_permission(self, request):
+#         if request.user.is_superuser:
+#             return True
+#         role = get_admin_role(request.user)
+#         return role == 'hrd'
+#     
+#     def has_change_permission(self, request, obj=None):
+#         if request.user.is_superuser:
+#             return True
+#         role = get_admin_role(request.user)
+#         return role == 'hrd'
+#     
+#     def has_delete_permission(self, request, obj=None):
+#         # Hanya superadmin yang bisa delete user
+#         return request.user.is_superuser
+#     
+#     def get_queryset(self, request):
+#         """Filter users berdasarkan perusahaan untuk HRD"""
+#         qs = super().get_queryset(request)
+#         
+#         if request.user.is_superuser:
+#             return qs
+#         
+#         role = get_admin_role(request.user)
+#         perusahaan = get_admin_perusahaan(request.user)
+#         
+#         if role == 'hrd' and perusahaan:
+#             # HRD hanya bisa lihat user yang terkait dengan karyawan di perusahaan mereka
+#             karyawan_ids = Karyawan.objects.filter(perusahaan=perusahaan).values_list('user_id', flat=True)
+#             return qs.filter(id__in=karyawan_ids)
+#         
+#         return qs.none()
 
 # Custom Filter untuk Bulan
 class MonthFilter(admin.SimpleListFilter):
