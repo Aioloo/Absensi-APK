@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-ALLOWED_HOSTS = ['192.168.70.101:8081', '172.20.10.6', 'localhost', '192.168.70.101', '*']
+ALLOWED_HOSTS = ['192.168.70.101:8081', '172.20.10.6', 'localhost', '192.168.18.18:8000', '*']
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -31,7 +31,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-51y1b!9(@*+u485foojo1(x_ya80o&&4s14q#6_k44!%l)gv$h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True  # Development mode - show detailed errors
+DEBUG = False  # Production mode - hide error details
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -154,12 +155,15 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Only for development
+# CORS_ALLOW_ALL_ORIGINS = True  # Development only - allow all origins (RISK - disabled for production)
+CORS_ALLOW_ALL_ORIGINS = True  # Production - only allow specific origins
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "http://192.168.18.18:8000",
+    "http://192.168.70.101:8081",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -168,9 +172,14 @@ CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_AGE = 1800  # 30 menit (1800 detik)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expire saat browser ditutup
 SESSION_SAVE_EVERY_REQUEST = True  # Refresh session setiap request
-SESSION_COOKIE_SECURE = False  # Set True jika menggunakan HTTPS
+SESSION_COOKIE_SECURE = False  # Set True jika menggunakan HTTPS (currently False for development IPs)
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access ke session cookie
 SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
+
+# Security settings for production
+SECURE_BROWSER_XSS_FILTER = True  # Enable XSS filter
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent MIME-sniffing
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # Clickjacking protection
 
 # ============================================
 # CONTENT SECURITY POLICY (CSP) CONFIGURATION

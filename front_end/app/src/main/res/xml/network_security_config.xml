@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">0.0.0.0</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true"> 192.168.68.100</domain>
-        <domain includeSubdomains="true">172.20.10.6</domain>
-        <domain includeSubdomains="true">192.168.70.101</domain>
-    </domain-config>
+<!-- Izinkan cleartext (HTTP) untuk IP lokal dan localhost -->
+<domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">0.0.0.0</domain>
+    <domain includeSubdomains="true">localhost</domain>
+    <domain includeSubdomains="true">192.168.68.100</domain>
+    <domain includeSubdomains="true">192.168.104.135</domain>
+    <domain includeSubdomains="true">192.168.70.101</domain>
+</domain-config>
+
+<!-- Aturan KHUSUS untuk domain https Anda -->
+<domain-config>
+    <domain includeSubdomains="true">absenentitas.pal.co.id</domain>
+    <trust-anchors>
+        <!-- Percayai sertifikat sistem (bawaan Android) -->
+        <certificates src="system" />
+        <!-- Percayai sertifikat user (jika Anda install manual sertifikat di HP) -->
+        <certificates src="user" />
+    </trust-anchors>
+</domain-config>
 </network-security-config>

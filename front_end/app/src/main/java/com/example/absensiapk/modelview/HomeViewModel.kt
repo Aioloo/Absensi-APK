@@ -130,9 +130,15 @@
                     val response = apiService.getAbsenceCount()
                     if(response.isSuccessful){
                         _absenceCount.value = response.body()
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("HomeViewModel", "Error loading absence count: $errorBody")
+                        _absenceCount.value = null
+
                     }
                 } catch (e: Exception){
                     Log.e("HomeViewModel", "Error loading absence count: ${e.message}")
+                    e.printStackTrace()
                     _absenceCount.value = null
                     }
             }

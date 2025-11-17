@@ -571,6 +571,22 @@ class KaryawanAdmin(admin.ModelAdmin):
         # Jika bukan superadmin dan bukan admin dengan perusahaan, return none
         return qs.none()
     
+    def has_add_permission(self, request):
+        """Hanya superadmin dan HRD yang bisa add karyawan, direktur tidak bisa"""
+        if request.user.is_superuser:
+            return True
+        
+        role = get_admin_role(request.user)
+        return role == 'hrd'
+    
+    def has_delete_permission(self, request, obj=None):
+        """Hanya superadmin dan HRD yang bisa delete karyawan, direktur tidak bisa"""
+        if request.user.is_superuser:
+            return True
+        
+        role = get_admin_role(request.user)
+        return role == 'hrd'
+    
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Batasi pilihan perusahaan berdasarkan user yang login"""
         if db_field.name == "perusahaan":
@@ -1023,6 +1039,14 @@ class TimeOffAdmin(admin.ModelAdmin):
     search_fields = ('karyawan__nama',)
     actions = ['approve_requests', 'reject_requests']
     
+    def has_module_permission(self, request):
+        """Hanya superadmin dan direktur yang bisa akses TimeOff, HRD tidak bisa"""
+        if request.user.is_superuser:
+            return True
+        
+        role = get_admin_role(request.user)
+        return role == 'direktur'
+    
     def get_queryset(self, request):
         """Filter data berdasarkan perusahaan admin"""
         qs = super().get_queryset(request)
@@ -1031,11 +1055,11 @@ class TimeOffAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return qs
         
-        # Direktur dan HRD hanya lihat time off dari perusahaan mereka
+        # Hanya direktur yang bisa lihat time off dari perusahaan mereka (HRD tidak bisa)
         role = get_admin_role(request.user)
         perusahaan = get_admin_perusahaan(request.user)
         
-        if role in ['direktur', 'hrd'] and perusahaan:
+        if role == 'direktur' and perusahaan:
             return qs.filter(karyawan__perusahaan=perusahaan)
         
         return qs.none()

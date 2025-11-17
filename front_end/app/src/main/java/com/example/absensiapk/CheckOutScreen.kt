@@ -149,7 +149,7 @@ fun CheckOutScreen(
                         val currentTime = LocalTime.now()
                         val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
                         val checkOutLimit = LocalTime.of(16,30)
-                        val status = if(currentTime.isBefore(checkOutLimit))"Pulang Cepat" else "On Time"
+                        val status = if(currentTime.isBefore(checkOutLimit))"Pulang Cepat" else "Tepat Waktu"
 
                         if(status == "Pulang Cepat" && alasan.isEmpty()){
                             isEarlyLeave = true

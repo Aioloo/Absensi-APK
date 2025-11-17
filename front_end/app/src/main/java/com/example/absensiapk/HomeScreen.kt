@@ -569,14 +569,14 @@ fun StatusItem(
 ) {
 
     val timeColor = when (status) {
-        "On Time" -> Color.Green
-        "Telat", "Pulang Cepat" -> Color.Red
+        "Tepat Waktu" -> Color.Green
+        "Terlambat", "Pulang Cepat" -> Color.Red
         else -> Color.Gray
     }
 
     val displayStatus = when (status) {
-        "On Time" -> "On Time"
-        "Telat" -> "Telat"
+        "Tepat Waktu" -> "Tepat Waktu"
+        "Terlambat" -> "Terlambat"
         "Pulang Cepat" -> "Pulang Cepat"
         else -> "-"
     }

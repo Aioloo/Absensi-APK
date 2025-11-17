@@ -160,9 +160,9 @@ fun CheckInScreen(
                         val currentTime = LocalTime.now()
                         val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
                         val checkInLimit = LocalTime.of(7, 30)
-                        val status = if (currentTime.isAfter(checkInLimit)) "Telat" else "On Time"
+                        val status = if (currentTime.isAfter(checkInLimit)) "Terlambat" else "Tepat Waktu"
 
-                        if (status == "Telat" && alasan.isEmpty()){
+                        if (status == "Terlambat" && alasan.isEmpty()){
                             isLate = true
                             Toast.makeText(context, "Isi Alasan Keterlambatan Check In", Toast.LENGTH_LONG).show()
                             return@TakePhotoButton

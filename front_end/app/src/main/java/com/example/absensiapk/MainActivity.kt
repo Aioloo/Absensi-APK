@@ -14,6 +14,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.ImageLoader
+import coil.Coil
 import com.example.absensiapk.api.RetrofitClient
 import com.example.absensiapk.modelview.HomeViewModel
 import com.example.absensiapk.modelview.LoginViewModel
@@ -22,6 +24,16 @@ import com.example.absensiapk.ui.theme.AbsensiAPKTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 1. Konfigurasi ImageLoader Coil agar pakai Unsafe Client
+        val imageLoader = ImageLoader.Builder(this)
+            .okHttpClient {
+                // Panggil fungsi yang tadi kita buat static di RetrofitClient
+                RetrofitClient.getUnsafeOkHttpClient()
+            }
+            .build()
+
+        // 2. Set sebagai default ImageLoader aplikasi
+        Coil.setImageLoader(imageLoader)
         setContent {
             AbsensiAPKTheme {
                 MyApp()
