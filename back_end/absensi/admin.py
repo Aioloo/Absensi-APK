@@ -903,8 +903,8 @@ class AbsensiAdmin(admin.ModelAdmin):
             ws.cell(row=summary_row, column=1).font = Font(bold=True)
             
             total_records = queryset.count()
-            on_time_count = queryset.filter(status_masuk='On Time').count()
-            late_count = queryset.filter(status_masuk='Telat').count()
+            on_time_count = queryset.filter(status_masuk='Tepat Waktu').count()
+            late_count = queryset.filter(status_masuk='Terlambat').count()
             
             ws.cell(row=summary_row + 1, column=1, value=f"Total Record: {total_records}")
             ws.cell(row=summary_row + 2, column=1, value=f"Tepat Waktu: {on_time_count}")
@@ -986,7 +986,7 @@ class AbsensiAdmin(admin.ModelAdmin):
     @admin.action(description="Tandai sebagai hadir (manual)")
     def mark_as_present(self, request, queryset):
         """Manually mark selected records as present"""
-        updated = queryset.update(status_masuk='On Time')
+        updated = queryset.update(status_masuk='Tepat Waktu')
         self.message_user(request, f"{updated} record ditandai sebagai hadir.")
     
     def changelist_view(self, request, extra_context=None):
@@ -999,8 +999,8 @@ class AbsensiAdmin(admin.ModelAdmin):
         
         # Calculate statistics
         total_records = queryset.count()
-        on_time_count = queryset.filter(status_masuk='On Time').count()
-        late_count = queryset.filter(status_masuk='Telat').count()
+        on_time_count = queryset.filter(status_masuk='Tepat Waktu').count()
+        late_count = queryset.filter(status_masuk='Terlambat').count()
         
         # Calculate percentages
         on_time_percentage = (on_time_count / total_records * 100) if total_records > 0 else 0

@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
-ALLOWED_HOSTS = ['192.168.70.101:8081', '172.20.10.6', 'localhost', '192.168.18.18:8000', '*']
+ALLOWED_HOSTS = ['192.168.70.101:8081', '192.168.1.3', 'localhost', '192.168.18.18:8000', '*']
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -32,11 +32,10 @@ SECRET_KEY = 'django-insecure-51y1b!9(@*+u485foojo1(x_ya80o&&4s14q#6_k44!%l)gv$h
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True  # Development mode - show detailed errors
-DEBUG = False  # Production mode - hide error details
+DEBUG = True  # Production mode - hide error details
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Application definition
 
@@ -100,7 +99,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'absensi_db',
         'USER': 'postgres',
-        'PASSWORD': '12345',
+        'PASSWORD': 'ingmar107',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -141,7 +140,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'      # untuk collectstatic -> files disimpan di sini
+STATICFILES_DIRS = [BASE_DIR / 'static']    # folder development assets (opsional)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

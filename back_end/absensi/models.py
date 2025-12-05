@@ -4,12 +4,12 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 STATUS_IN_CHOICES = [
-        ('On Time', 'On Time'),
-        ('Telat', 'Telat'),
+        ('Tepat Waktu', 'Tepat Waktu'),
+        ('Terlambat', 'Terlambat'),
     ]
 
 STATUS_OUT_CHOICES = [
-        ('On Time', 'On Time'),
+        ('Tepat Waktu', 'Tepat Waktu'),
         ('Pulang Cepat', 'Pulang Cepat'),
     ]
 

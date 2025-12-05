@@ -242,7 +242,7 @@ class AbsensiViewSet(viewsets.ViewSet):
         
         # GUNAKAN WAKTU SERVER (ANTI-MANIPULASI)
         checkin_limit = time(7, 30)
-        status_absensi = 'On Time' if server_jam_masuk <= checkin_limit else 'Telat'
+        status_absensi = 'Tepat Waktu' if server_jam_masuk <= checkin_limit else 'Terlambat'
         
         # 📍 CEK LOKASI ABSENSI
         lokasi_lat = request.data.get('lokasi_masuk_lat')
@@ -272,7 +272,7 @@ class AbsensiViewSet(viewsets.ViewSet):
         data['status_lokasi'] = status_lokasi  # Tambahkan status lokasi
         data['tanggal'] = server_tanggal  # Force server date
 
-        if status_absensi == 'Telat' and not data.get('alasan_keterlambatan'):
+        if status_absensi == 'Terlambat' and not data.get('alasan_keterlambatan'):
             return Response({"error": "Alasan keterlambatan wajib diisi jika Anda terlambat."}, status=status.HTTP_400_BAD_REQUEST)
         
         serializer = AbsensiMasukSerializer(data=data)
@@ -376,7 +376,7 @@ class AbsensiViewSet(viewsets.ViewSet):
         else:
             checkout_time = time(16, 30)  # Direktur & Karyawan pulang jam 16:30
         
-        status_keluar = 'Pulang Cepat' if server_jam_keluar < checkout_time else 'On Time'
+        status_keluar = 'Pulang Cepat' if server_jam_keluar < checkout_time else 'Tepat Waktu'
 
         alasan_pulang_cepat = request.data.get('alasan_pulang_cepat', '')
 
